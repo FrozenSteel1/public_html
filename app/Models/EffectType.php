@@ -2,11 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EffectType extends Model
 {
-    /** @use HasFactory<\Database\Factories\EffectTypeFactory> */
-    use HasFactory;
+    protected $fillable = [
+        'name',
+        'description',
+    ];
+
+    // Связь с таблицей effects (один тип эффекта может быть использован во многих эффектах)
+    public function effects(): HasMany
+    {
+        return $this->hasMany(Effect::class);
+    }
 }
