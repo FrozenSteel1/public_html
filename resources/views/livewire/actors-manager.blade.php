@@ -38,77 +38,173 @@
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 4px;">Имя актора *</label>
                                 <input wire:model="name" type="text"
-                                       style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;">
+                                       style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                       placeholder="Введите имя актора">
                                 @error('name') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; font-weight: bold; margin-bottom: 4px;">Описание</label>
                                 <textarea wire:model="description" rows="3"
-                                          style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
+                                          style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                          placeholder="Описание актора"></textarea>
                                 @error('description') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
                             <!-- Настройки -->
                             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <span style="font-weight: bold;">Настройки (Settings)</span>
-                                    <button wire:click="addSetting" type="button"
-                                            style="background-color: #10b981; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                        + Добавить настройку
-                                    </button>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <span style="font-weight: bold; font-size: 15px;">⚙️ Настройки (Settings)</span>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <!-- Кнопки быстрого добавления с предустановленными ключами -->
+                                        @foreach($settingKeys as $settingKey)
+                                            <button wire:click="addSetting('{{ $settingKey }}')" type="button"
+                                                    style="background-color: #0891b2; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                                + {{ $settingKey }}
+                                            </button>
+                                        @endforeach
+                                        <!-- Кнопка добавления пустой настройки -->
+                                        <button wire:click="addSetting" type="button"
+                                                style="background-color: #10b981; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                            + Свой ключ
+                                        </button>
+                                    </div>
                                 </div>
 
-                                @if(count($settings) > 0)
+                                @if(is_array($settings) && count($settings) > 0)
                                     @foreach($settings as $index => $setting)
-                                        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                                            <input wire:model="settings.{{ $index }}.key" type="text"
-                                                   style="flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Ключ">
-                                            <input wire:model="settings.{{ $index }}.value" type="text"
-                                                   style="flex: 2; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Значение">
-                                            <button wire:click="removeSetting({{ $index }})" type="button"
-                                                    style="background-color: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                                ✕
-                                            </button>
+                                        <div style="padding: 10px; margin-bottom: 8px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                            <div style="display: flex; gap: 8px; align-items: center;">
+                                                <!-- Ключ с автоподстановкой -->
+                                                <div style="flex: 1;">
+                                                    <input wire:model="settings.{{ $index }}.key"
+                                                           type="text"
+                                                           list="setting-keys-list"
+                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                           placeholder="Выберите или впишите ключ"
+                                                           autocomplete="off">
+                                                    <datalist id="setting-keys-list">
+                                                        @foreach($settingKeys as $settingKey)
+                                                            <option value="{{ $settingKey }}">
+                                                        @endforeach
+                                                    </datalist>
+                                                </div>
+
+                                                <!-- Значение -->
+                                                <input wire:model="settings.{{ $index }}.value" type="text"
+                                                       style="flex: 2; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                       placeholder="Значение">
+
+                                                <!-- Кнопка удаления -->
+                                                <button wire:click="removeSetting({{ $index }})" type="button"
+                                                        style="background-color: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                                    ✕
+                                                </button>
+                                            </div>
                                         </div>
                                     @endforeach
                                 @else
-                                    <div style="color: #9ca3af; font-size: 14px; padding: 12px; text-align: center;">
-                                        Нет настроек. Нажмите "Добавить настройку"
+                                    <div style="color: #9ca3af; font-size: 14px; padding: 20px; text-align: center; background: #f9fafb; border-radius: 4px;">
+                                        <p style="margin-bottom: 12px;">Нет настроек.</p>
+                                        <p style="font-size: 12px;">Нажмите на кнопку с нужным ключом или "Свой ключ" для добавления</p>
                                     </div>
                                 @endif
                             </div>
 
                             <!-- Триггеры -->
                             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <span style="font-weight: bold;">Триггеры (Triggers)</span>
-                                    <button wire:click="addTrigger" type="button"
-                                            style="background-color: #10b981; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                        + Добавить триггер
-                                    </button>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <span style="font-weight: bold; font-size: 15px;">🔔 Триггеры (Triggers)</span>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <!-- Кнопки быстрого добавления с предустановленными ключами -->
+                                        @foreach($triggerKeys as $triggerKey)
+                                            <button wire:click="addTrigger('{{ $triggerKey }}')" type="button"
+                                                    style="background-color: #6366f1; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                                + {{ $triggerKey }}
+                                            </button>
+                                        @endforeach
+                                        <!-- Кнопка добавления пустого триггера -->
+                                        <button wire:click="addTrigger" type="button"
+                                                style="background-color: #10b981; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                            + Свой ключ
+                                        </button>
+                                    </div>
                                 </div>
 
-                                @if(count($triggers) > 0)
+                                @if(is_array($triggers) && count($triggers) > 0)
                                     @foreach($triggers as $index => $trigger)
-                                        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                                            <input wire:model="triggers.{{ $index }}.key" type="text"
-                                                   style="flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Ключ">
-                                            <input wire:model="triggers.{{ $index }}.value" type="text"
-                                                   style="flex: 2; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Значение">
-                                            <button wire:click="removeTrigger({{ $index }})" type="button"
-                                                    style="background-color: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                                ✕
-                                            </button>
+                                        <div style="padding: 12px; margin-bottom: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                                <span style="font-weight: 600; font-size: 14px; color: #4b5563;">
+                                                    Триггер #{{ $index + 1 }}
+                                                    @if(!empty($trigger['key']))
+                                                        - <span style="color: #6366f1;">{{ $trigger['key'] }}</span>
+                                                    @endif
+                                                </span>
+                                                <button wire:click="removeTrigger({{ $index }})" type="button"
+                                                        style="background-color: #ef4444; color: white; padding: 4px 10px; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                                                    ✕ Удалить
+                                                </button>
+                                            </div>
+
+                                            <!-- Ключ триггера с автоподстановкой -->
+                                            <div style="margin-bottom: 10px;">
+                                                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                    Ключ триггера
+                                                </label>
+                                                <input wire:model="triggers.{{ $index }}.key"
+                                                       type="text"
+                                                       list="trigger-keys-list"
+                                                       style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                       placeholder="Выберите или впишите ключ триггера"
+                                                       autocomplete="off">
+                                                <datalist id="trigger-keys-list">
+                                                    @foreach($triggerKeys as $triggerKey)
+                                                        <option value="{{ $triggerKey }}">
+                                                    @endforeach
+                                                </datalist>
+                                            </div>
+
+                                            <!-- Значение триггера -->
+                                            <div style="margin-bottom: 10px;">
+                                                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                    Значение триггера
+                                                </label>
+                                                <input wire:model="triggers.{{ $index }}.value" type="text"
+                                                       style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                       placeholder="Значение триггера">
+                                            </div>
+
+                                            <!-- Событие -->
+                                            <div>
+                                                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                    🎯 Событие, которое активирует триггер
+                                                </label>
+                                                <select wire:model="triggers.{{ $index }}.event_id"
+                                                        style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; background-color: white;">
+                                                    <option value="">Выберите событие</option>
+                                                    @foreach($eventsList as $event)
+                                                        <option value="{{ $event['id'] }}">{{ $event['name'] }} (ID: {{ $event['id'] }})</option>
+                                                    @endforeach
+                                                </select>
+
+                                                @if(!empty($trigger['event_id']))
+                                                    @php
+                                                        $selectedEvent = collect($eventsList)->firstWhere('id', (int)$trigger['event_id']);
+                                                    @endphp
+                                                    @if($selectedEvent)
+                                                        <div style="margin-top: 4px; padding: 4px 10px; background-color: #e0e7ff; border-radius: 4px; font-size: 12px; color: #3730a3;">
+                                                            Будет вызвано событие: <strong>{{ $selectedEvent['name'] }}</strong>
+                                                        </div>
+                                                    @endif
+                                                @endif
+                                            </div>
                                         </div>
                                     @endforeach
                                 @else
-                                    <div style="color: #9ca3af; font-size: 14px; padding: 12px; text-align: center;">
-                                        Нет триггеров. Нажмите "Добавить триггер"
+                                    <div style="color: #9ca3af; font-size: 14px; padding: 20px; text-align: center; background: #f9fafb; border-radius: 4px;">
+                                        <p style="margin-bottom: 12px;">Нет триггеров.</p>
+                                        <p style="font-size: 12px;">Нажмите на кнопку с нужным ключом или "Свой ключ" для добавления</p>
                                     </div>
                                 @endif
                             </div>
@@ -128,7 +224,7 @@
                     </div>
                 @endif
 
-                <!-- Таблица -->
+                <!-- Таблица акторов -->
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
                         <thead>

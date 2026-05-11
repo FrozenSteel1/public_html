@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Actor;
+use App\Models\Event;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,12 +20,48 @@ class ActorsManager extends Component
     public $showForm = false;
     public $search = '';
 
+    // Список событий для автоподстановки в триггерах
+    public $eventsList = [];
+
+    // Предустановленные ключи для settings
+    public $settingKeys = [
+        'Вес влияния',
+        'Публичная заметность',
+        'Формальная сила',
+        'Ресурсная сила',
+        'Скорость реакции',
+        'Длина памяти',
+        'Стартовая лояльность',
+        'Стартовая напряжённость',
+    ];
+
+    // Предустановленные ключи для триггеров
+    public $triggerKeys = [
+        'Институциональная устойчивость',
+        'Управляемость аппарата',
+        'Конфликтная напряженность',
+        'Публичная легитимность',
+        'Доверие к процедурам',
+        'Риск управленческого сбоя',
+        'Горизонт устойчивости',
+    ];
+
     protected $rules = [
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
         'settings' => 'nullable|array',
         'triggers' => 'nullable|array',
     ];
+
+    public function mount()
+    {
+        $this->loadEvents();
+    }
+
+    public function loadEvents()
+    {
+        $this->eventsList = Event::select('id', 'name')->orderBy('name')->get()->toArray();
+    }
 
     public function render()
     {
@@ -57,12 +94,25 @@ class ActorsManager extends Component
         $this->settings = $this->jsonToArray($actor->settings);
         $this->triggers = $this->jsonToArray($actor->triggers);
 
+        // Убеждаемся, что у всех триггеров есть поле event_id
+        foreach ($this->triggers as $index => $trigger) {
+            if (!isset($this->triggers[$index]['event_id'])) {
+                $this->triggers[$index]['event_id'] = '';
+            }
+        }
+
         $this->showForm = true;
     }
 
-    public function addSetting()
+    /**
+     * Добавление настройки с возможностью указать ключ
+     */
+    public function addSetting($key = '')
     {
-        $this->settings[] = ['key' => '', 'value' => ''];
+        $this->settings[] = [
+            'key' => $key,
+            'value' => ''
+        ];
     }
 
     public function removeSetting($index)
@@ -73,9 +123,16 @@ class ActorsManager extends Component
         }
     }
 
-    public function addTrigger()
+    /**
+     * Добавление триггера с возможностью указать ключ
+     */
+    public function addTrigger($key = '')
     {
-        $this->triggers[] = ['key' => '', 'value' => ''];
+        $this->triggers[] = [
+            'key' => $key,
+            'value' => '',
+            'event_id' => ''
+        ];
     }
 
     public function removeTrigger($index)
@@ -88,7 +145,10 @@ class ActorsManager extends Component
 
     public function save()
     {
-        $this->validate();
+        $this->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
 
         // Подготовка данных для сохранения
         $settingsData = $this->arrayToJson($this->settings);
@@ -165,7 +225,10 @@ class ActorsManager extends Component
 
         // Фильтруем пустые значения
         $filtered = array_filter($data, function($item) {
-            return is_array($item) && (!empty($item['key']) || !empty($item['value']));
+            if (is_array($item)) {
+                return !empty($item['key']) || !empty($item['value']) || !empty($item['event_id']);
+            }
+            return !empty($item);
         });
 
         if (empty($filtered)) {

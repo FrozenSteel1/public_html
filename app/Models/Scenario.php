@@ -40,4 +40,8 @@ class Scenario extends Model
     {
         return $this->hasMany(Preset::class);
     }
+    public function company(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

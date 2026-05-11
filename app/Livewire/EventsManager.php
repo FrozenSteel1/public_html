@@ -15,19 +15,29 @@ class EventsManager extends Component
     public $description = '';
     public $editingId = null;
 
-    // Для эффектов
+    // Для эффектов: теперь каждый эффект имеет ключ и значение вместо JSON
     public $effects = [];
-    public $newEffectTypeId = '';
-    public $newEffectData = [];
 
     public $showForm = false;
     public $search = '';
+
+    // Предустановленные ключи для эффектов
+    public $effectKeys = [
+        'Институциональная устойчивость',
+        'Управляемость аппарата',
+        'Конфликтная напряженность',
+        'Публичная легитимность',
+        'Доверие к процедурам',
+        'Риск управленческого сбоя',
+        'Горизонт устойчивости',
+    ];
 
     protected $rules = [
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
         'effects.*.effect_type_id' => 'required|exists:effect_types,id',
-        'effects.*.effect_data' => 'required|array',
+        'effects.*.key' => 'nullable|string',
+        'effects.*.value' => 'nullable|string',
     ];
 
     public function render()
@@ -61,30 +71,58 @@ class EventsManager extends Component
         $this->name = $event->name;
         $this->description = $event->description;
 
+        // Преобразование эффектов: извлекаем key и value из effect_data
         $this->effects = $event->effects->map(function($effect) {
+            $effectData = $this->jsonToArray($effect->effect_data);
+
+            // Если effect_data содержит простые пары ключ-значение
+            $key = '';
+            $value = '';
+
+            if (is_array($effectData)) {
+                if (isset($effectData['key'])) {
+                    $key = $effectData['key'];
+                    $value = $effectData['value'] ?? '';
+                } elseif (count($effectData) > 0) {
+                    // Если это массив с одним элементом
+                    $firstKey = array_key_first($effectData);
+                    if (is_string($firstKey)) {
+                        $key = $firstKey;
+                        $value = $effectData[$firstKey];
+                    }
+                }
+            }
+
             return [
                 'id' => $effect->id,
                 'effect_type_id' => $effect->effect_type_id,
-                'effect_data' => $effect->effect_data,
+                'key' => $key,
+                'value' => $value,
             ];
         })->toArray();
 
         $this->showForm = true;
     }
 
-    public function addEffect()
+    /**
+     * Добавление эффекта с возможностью указать ключ
+     */
+    public function addEffect($key = '')
     {
         $this->effects[] = [
             'id' => null,
             'effect_type_id' => '',
-            'effect_data' => [],
+            'key' => $key,
+            'value' => '',
         ];
     }
 
     public function removeEffect($index)
     {
-        unset($this->effects[$index]);
-        $this->effects = array_values($this->effects);
+        if (isset($this->effects[$index])) {
+            unset($this->effects[$index]);
+            $this->effects = array_values($this->effects);
+        }
     }
 
     public function save()
@@ -106,20 +144,22 @@ class EventsManager extends Component
             $updatedEffectIds = [];
 
             foreach ($this->effects as $effect) {
-                if (isset($effect['id'])) {
+                // Формируем effect_data как простой JSON с ключом и значением
+                $effectData = $this->buildEffectData($effect['key'] ?? '', $effect['value'] ?? '');
+
+                $effectDataArray = [
+                    'effect_type_id' => $effect['effect_type_id'],
+                    'effect_data' => $effectData,
+                ];
+
+                if (isset($effect['id']) && $effect['id']) {
                     $existingEffect = $event->effects()->find($effect['id']);
                     if ($existingEffect) {
-                        $existingEffect->update([
-                            'effect_type_id' => $effect['effect_type_id'],
-                            'effect_data' => $effect['effect_data'],
-                        ]);
+                        $existingEffect->update($effectDataArray);
                         $updatedEffectIds[] = $effect['id'];
                     }
                 } else {
-                    $newEffect = $event->effects()->create([
-                        'effect_type_id' => $effect['effect_type_id'],
-                        'effect_data' => $effect['effect_data'],
-                    ]);
+                    $newEffect = $event->effects()->create($effectDataArray);
                     $updatedEffectIds[] = $newEffect->id;
                 }
             }
@@ -138,10 +178,14 @@ class EventsManager extends Component
             ]);
 
             foreach ($this->effects as $effect) {
-                $event->effects()->create([
-                    'effect_type_id' => $effect['effect_type_id'],
-                    'effect_data' => $effect['effect_data'],
-                ]);
+                if (!empty($effect['effect_type_id'])) {
+                    $effectData = $this->buildEffectData($effect['key'] ?? '', $effect['value'] ?? '');
+
+                    $event->effects()->create([
+                        'effect_type_id' => $effect['effect_type_id'],
+                        'effect_data' => $effectData,
+                    ]);
+                }
             }
 
             session()->flash('message', 'Событие успешно создано.');
@@ -169,8 +213,56 @@ class EventsManager extends Component
         $this->description = '';
         $this->editingId = null;
         $this->effects = [];
-        $this->newEffectTypeId = '';
-        $this->newEffectData = [];
         $this->resetValidation();
+    }
+
+    /**
+     * Построение effect_data из ключа и значения
+     */
+    private function buildEffectData($key, $value): string
+    {
+        $data = [];
+
+        if (!empty($key)) {
+            $data['key'] = $key;
+        }
+
+        if (!empty($value)) {
+            $data['value'] = $value;
+        }
+
+        // Если есть и ключ и значение, сохраняем как пару
+        if (!empty($key) && isset($value)) {
+            return json_encode($data, JSON_UNESCAPED_UNICODE);
+        }
+
+        // Если только значение, сохраняем как есть
+        if (empty($key) && !empty($value)) {
+            return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE);
+        }
+
+        // Если только ключ
+        if (!empty($key) && empty($value)) {
+            return json_encode(['key' => $key], JSON_UNESCAPED_UNICODE);
+        }
+
+        return json_encode([], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Преобразование JSON строки в массив
+     */
+    private function jsonToArray($data): array
+    {
+        if (is_array($data)) {
+            return $data;
+        }
+
+        if (is_string($data) && !empty($data)) {
+            $decoded = json_decode($data, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
     }
 }

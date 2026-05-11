@@ -70,39 +70,85 @@
                                 @error('situation') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
-                            <!-- Дополнительные данные -->
+                            <!-- Дополнительные данные с автоподстановкой -->
                             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 6px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                     <span style="font-weight: bold;">Дополнительные данные</span>
-                                    <button wire:click="addAdditionalData" type="button"
-                                            style="background-color: #10b981; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                        + Добавить
-                                    </button>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        @foreach($predefinedKeys as $predefinedKey)
+                                            <button wire:click="addAdditionalData('{{ $predefinedKey }}')" type="button"
+                                                    style="background-color: #6366f1; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+                                                + {{ $predefinedKey }}
+                                            </button>
+                                        @endforeach
+                                        <button wire:click="addAdditionalData" type="button"
+                                                style="background-color: #10b981; color: white; padding: 6px 12px; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+                                            + Свой ключ
+                                        </button>
+                                    </div>
                                 </div>
 
                                 @if(is_array($additional_data) && count($additional_data) > 0)
                                     @foreach($additional_data as $index => $data)
                                         <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                                            <input wire:model="additional_data.{{ $index }}.key" type="text"
-                                                   style="flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Ключ">
-                                            <input wire:model="additional_data.{{ $index }}.value" type="text"
-                                                   style="flex: 2; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                   placeholder="Значение">
+                                            <!-- Поле ключа с автоподстановкой -->
+                                            <div style="flex: 1; position: relative;">
+                                                <input wire:model.live="additional_data.{{ $index }}.key"
+                                                       type="text"
+                                                       list="predefined-keys-list"
+                                                       style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
+                                                       placeholder="Выберите или впишите ключ"
+                                                       autocomplete="off">
+                                                <datalist id="predefined-keys-list">
+                                                    @foreach($predefinedKeys as $predefinedKey)
+                                                        <option value="{{ $predefinedKey }}">
+                                                    @endforeach
+                                                </datalist>
+                                            </div>
+
+                                            <!-- Поле значения: если ключ "Актор" - показываем select с акторами -->
+                                            <div style="flex: 2;">
+                                                @if(isset($data['key']) && $data['key'] === 'Актор')
+                                                    <select wire:model="additional_data.{{ $index }}.value"
+                                                            style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; background-color: #eff6ff;">
+                                                        <option value="">Выберите актора</option>
+                                                        @foreach($actorsList as $actor)
+                                                            <option value="{{ $actor['id'] }}">{{ $actor['name'] }} (ID: {{ $actor['id'] }})</option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <input wire:model="additional_data.{{ $index }}.value"
+                                                           type="text"
+                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
+                                                           placeholder="Значение">
+                                                @endif
+                                            </div>
+
                                             <button wire:click="removeAdditionalData({{ $index }})" type="button"
                                                     style="background-color: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
                                                 ✕
                                             </button>
                                         </div>
+
+                                        <!-- Превью выбранного актора -->
+                                        @if(isset($data['key']) && $data['key'] === 'Актор' && !empty($data['value']))
+                                            @php
+                                                $selectedActor = collect($actorsList)->firstWhere('id', (int)$data['value']);
+                                            @endphp
+                                            @if($selectedActor)
+                                                <div style="margin: -4px 0 8px 0; padding: 4px 10px; background-color: #dbeafe; border-radius: 4px; font-size: 12px; color: #1e40af;">
+                                                    Выбран: <strong>{{ $selectedActor['name'] }}</strong>
+                                                </div>
+                                            @endif
+                                        @endif
                                     @endforeach
                                 @else
-                                    <div style="color: #9ca3af; font-size: 14px; padding: 12px; text-align: center;">
-                                        Нет дополнительных данных
+                                    <div style="color: #9ca3af; font-size: 14px; padding: 12px; text-align: center; background: #f9fafb; border-radius: 4px;">
+                                        Нет дополнительных данных. Нажмите на кнопку с нужным ключом или "Свой ключ"
                                     </div>
                                 @endif
                             </div>
-
-                            <!-- Выборы -->
+                            <!-- Выборы (без изменений) -->
                             <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 6px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                     <span style="font-weight: bold;">Выборы (Choices)</span>

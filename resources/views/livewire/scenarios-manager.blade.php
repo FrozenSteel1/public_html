@@ -8,129 +8,192 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
+
                 @if (session()->has('message'))
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    <div style="background-color: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
                         {{ session('message') }}
                     </div>
                 @endif
 
-                <div class="mb-4">
+                <!-- Поиск и кнопка создать -->
+                <div style="display: flex; gap: 16px; margin-bottom: 24px;">
                     <input wire:model.live.debounce.300ms="search" type="text"
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                           style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
                            placeholder="Поиск сценариев...">
+
+                    <button wire:click="create" type="button"
+                            style="background-color: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; white-space: nowrap;">
+                        + Создать сценарий
+                    </button>
                 </div>
 
+                <!-- Форма -->
                 @if($showForm)
-                    <div class="bg-gray-50 shadow-md rounded px-8 pt-6 pb-8 mb-4 border">
-                        <h3 class="text-lg font-semibold mb-4">
+                    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                        <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 16px;">
                             {{ $editingId ? 'Редактирование сценария' : 'Новый сценарий' }}
                         </h3>
 
-                        <form wire:submit="save">
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Название</label>
-                                <input wire:model="name" type="text" id="name"
-                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                       placeholder="Название сценария">
-                                @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <form wire:submit.prevent="save">
+                            <!-- Название и компания -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="display: block; font-weight: bold; margin-bottom: 4px;">Название *</label>
+                                    <input wire:model="name" type="text"
+                                           style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                           placeholder="Название сценария">
+                                    @error('name') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
+                                </div>
+
+                                <!-- Выбор компании -->
+                                <div>
+                                    <label style="display: block; font-weight: bold; margin-bottom: 4px;">
+                                        🏢 Компания
+                                    </label>
+                                    <select wire:model="company_id"
+                                            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; background-color: white;">
+                                        <option value="">Без компании</option>
+                                        @foreach($companiesList as $company)
+                                            <option value="{{ $company['id'] }}">
+                                                {{ $company['name'] }}
+                                                ({{ ucfirst($company['difficulty']) }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('company_id') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
+
+                                    <!-- Превью выбранной компании -->
+                                    @if(!empty($company_id))
+                                        @php
+                                            $selectedCompany = collect($companiesList)->firstWhere('id', (int)$company_id);
+                                        @endphp
+                                        @if($selectedCompany)
+                                            <div style="margin-top: 4px; padding: 4px 10px; background-color: #dbeafe; border-radius: 4px; font-size: 12px; color: #1e40af;">
+                                                Выбрана: <strong>{{ $selectedCompany['name'] }}</strong>
+                                                (Сложность: {{ ucfirst($selectedCompany['difficulty']) }})
+                                            </div>
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="description">Описание</label>
-                                <textarea wire:model="description" id="description" rows="3"
-                                          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-weight: bold; margin-bottom: 4px;">Описание</label>
+                                <textarea wire:model="description" rows="3"
+                                          style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
                                           placeholder="Описание сценария"></textarea>
-                                @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('description') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="difficulty">Сложность</label>
-                                <select wire:model="difficulty" id="difficulty"
-                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                    @foreach($difficulties as $difficulty)
-                                        <option value="{{ $difficulty }}">{{ ucfirst($difficulty) }}</option>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-weight: bold; margin-bottom: 4px;">Сложность</label>
+                                <select wire:model="difficulty"
+                                        style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; background-color: white;">
+                                    @foreach($difficulties as $d)
+                                        <option value="{{ $d }}">{{ ucfirst($d) }}</option>
                                     @endforeach
                                 </select>
-                                @error('difficulty') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('difficulty') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
-                            <div class="flex items-center justify-between">
+                            <!-- Кнопки -->
+                            <div style="display: flex; gap: 12px;">
                                 <button type="submit"
-                                        style="background-color: #2563eb !important;
-               color: white !important;
-               padding: 10px 20px !important;
-               border: 2px solid #1d4ed8 !important;
-               border-radius: 6px !important;
-               font-weight: bold !important;
-               font-size: 14px !important;
-               cursor: pointer !important;
-               box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;"
-                                        onmouseover="this.style.backgroundColor='#1d4ed8'"
-                                        onmouseout="this.style.backgroundColor='#2563eb'">
-                                    {{ $editingId ? 'Обновить' : 'Создать' }}
+                                        style="background-color: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                                    {{ $editingId ? '✓ Обновить' : '✓ Создать' }}
                                 </button>
-                                <button wire:click="cancel" type="button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                                    Отмена
+                                <button wire:click="cancel" type="button"
+                                        style="background-color: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                                    ✗ Отмена
                                 </button>
                             </div>
                         </form>
                     </div>
                 @endif
 
-                @if(!$showForm)
-                    <div class="mb-4">
-                        <button wire:click="create" style="background-color: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                            Создать сценарий
-                        </button>
-                    </div>
-                @endif
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
+                <!-- Таблица сценариев -->
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
                         <thead>
-                        <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                            <th class="py-3 px-6 text-left">ID</th>
-                            <th class="py-3 px-6 text-left">Название</th>
-                            <th class="py-3 px-6 text-left">Описание</th>
-                            <th class="py-3 px-6 text-left">Сложность</th>
-                            <th class="py-3 px-6 text-center">Сцены</th>
-                            <th class="py-3 px-6 text-center">Предустановки</th>
-                            <th class="py-3 px-6 text-center">Действия</th>
+                        <tr style="background-color: #f3f4f6; color: #4b5563; text-transform: uppercase; font-size: 14px;">
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">ID</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">Название</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">Компания</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">Сложность</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">Сцены</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">Предустановки</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">Действия</th>
                         </tr>
                         </thead>
-                        <tbody class="text-gray-600 text-sm">
-                        @foreach($scenarios as $scenario)
-                            <tr class="border-b border-gray-200 hover:bg-gray-100">
-                                <td class="py-3 px-6">{{ $scenario->id }}</td>
-                                <td class="py-3 px-6 font-medium">{{ $scenario->name }}</td>
-                                <td class="py-3 px-6">{{ Str::limit($scenario->description, 50) }}</td>
-                                <td class="py-3 px-6">
-                                        <span class="bg-{{ $scenario->difficulty === 'hard' || $scenario->difficulty === 'expert' ? 'red' : 'green' }}-200
-                                                   text-{{ $scenario->difficulty === 'hard' || $scenario->difficulty === 'expert' ? 'red' : 'green' }}-600
-                                                   py-1 px-3 rounded-full text-xs">
+                        <tbody style="color: #4b5563; font-size: 14px;">
+                        @forelse($scenarios as $scenario)
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 12px;">{{ $scenario->id }}</td>
+                                <td style="padding: 12px; font-weight: 500;">{{ $scenario->name }}</td>
+                                <td style="padding: 12px;">
+                                    @if($scenario->company)
+                                        <span style="background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+                                                {{ $scenario->company->name }}
+                                            </span>
+                                    @else
+                                        <span style="color: #9ca3af;">—</span>
+                                    @endif
+                                </td>
+                                <td style="padding: 12px;">
+                                        <span style="padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;
+                                            @if($scenario->difficulty === 'easy') background-color: #d1fae5; color: #065f46;
+                                            @elseif($scenario->difficulty === 'medium') background-color: #fef3c7; color: #92400e;
+                                            @elseif($scenario->difficulty === 'hard') background-color: #fed7aa; color: #9a3412;
+                                            @elseif($scenario->difficulty === 'expert') background-color: #fecaca; color: #991b1b;
+                                            @else background-color: #e0e7ff; color: #3730a3;
+                                            @endif">
                                             {{ ucfirst($scenario->difficulty) }}
                                         </span>
                                 </td>
-                                <td class="py-3 px-6 text-center">{{ $scenario->scenes_count }}</td>
-                                <td class="py-3 px-6 text-center">{{ $scenario->presets_count }}</td>
-                                <td class="py-3 px-6 text-center">
-                                    <button wire:click="edit({{ $scenario->id }})"
-                                            class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-xs mr-2">
-                                        Редактировать
-                                    </button>
-                                    <button wire:click="delete({{ $scenario->id }})"
-                                            wire:confirm="Вы уверены, что хотите удалить этот сценарий?"
-                                            class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                        Удалить
-                                    </button>
+                                <td style="padding: 12px; text-align: center;">
+                                    @if($scenario->scenes_count > 0)
+                                        <span style="background-color: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                                {{ $scenario->scenes_count }}
+                                            </span>
+                                    @else
+                                        <span style="color: #9ca3af;">0</span>
+                                    @endif
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    @if($scenario->presets_count > 0)
+                                        <span style="background-color: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                                {{ $scenario->presets_count }}
+                                            </span>
+                                    @else
+                                        <span style="color: #9ca3af;">0</span>
+                                    @endif
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <div style="display: flex; justify-content: center; gap: 8px;">
+                                        <button wire:click="edit({{ $scenario->id }})"
+                                                style="background-color: #f59e0b; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                            ✏️ Ред.
+                                        </button>
+                                        <button wire:click="delete({{ $scenario->id }})"
+                                                wire:confirm="Удалить сценарий '{{ $scenario->name }}'?"
+                                                style="background-color: #ef4444; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                            🗑️ Уд.
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="7" style="padding: 24px; text-align: center; color: #9ca3af;">
+                                    Сценарии не найдены
+                                </td>
+                            </tr>
+                        @endforelse
                         </tbody>
                     </table>
                 </div>
 
-                <div class="mt-4">
+                <div style="margin-top: 16px;">
                     {{ $scenarios->links() }}
                 </div>
             </div>

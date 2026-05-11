@@ -8,154 +8,227 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
+
                 @if (session()->has('message'))
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    <div style="background-color: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
                         {{ session('message') }}
                     </div>
                 @endif
 
-                <div class="mb-4">
+                <!-- Поиск и кнопка создать -->
+                <div style="display: flex; gap: 16px; margin-bottom: 24px;">
                     <input wire:model.live.debounce.300ms="search" type="text"
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                           style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
                            placeholder="Поиск событий...">
+
+                    <button wire:click="create" type="button"
+                            style="background-color: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; white-space: nowrap;">
+                        + Создать событие
+                    </button>
                 </div>
 
+                <!-- Форма -->
                 @if($showForm)
-                    <div class="bg-gray-50 shadow-md rounded px-8 pt-6 pb-8 mb-4 border">
-                        <h3 class="text-lg font-semibold mb-4">
+                    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                        <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 16px;">
                             {{ $editingId ? 'Редактирование события' : 'Новое событие' }}
                         </h3>
 
-                        <form wire:submit="save">
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Название события</label>
-                                <input wire:model="name" type="text" id="name"
-                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        <form wire:submit.prevent="save">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-weight: bold; margin-bottom: 4px;">Название события *</label>
+                                <input wire:model="name" type="text"
+                                       style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
                                        placeholder="Название события">
-                                @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('name') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="description">Описание</label>
-                                <textarea wire:model="description" id="description" rows="3"
-                                          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-weight: bold; margin-bottom: 4px;">Описание</label>
+                                <textarea wire:model="description" rows="3"
+                                          style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
                                           placeholder="Описание события"></textarea>
-                                @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('description') <span style="color: red; font-size: 12px;">{{ $message }}</span> @enderror
                             </div>
 
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <label class="block text-gray-700 text-sm font-bold">Эффекты события</label>
-                                    <button wire:click="addEffect" type="button"
-                                            class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                        Добавить эффект
-                                    </button>
+                            <!-- Эффекты -->
+                            <div style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <span style="font-weight: bold; font-size: 15px;">⚡ Эффекты события</span>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <!-- Кнопки быстрого добавления с предустановленными ключами -->
+                                        @foreach($effectKeys as $effectKey)
+                                            <button wire:click="addEffect('{{ $effectKey }}')" type="button"
+                                                    style="background-color: #7c3aed; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                                + {{ $effectKey }}
+                                            </button>
+                                        @endforeach
+                                        <!-- Кнопка добавления пустого эффекта -->
+                                        <button wire:click="addEffect" type="button"
+                                                style="background-color: #10b981; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                            + Свой ключ
+                                        </button>
+                                    </div>
                                 </div>
 
-                                @foreach($effects as $index => $effect)
-                                    <div class="border rounded p-4 mb-3 bg-white">
-                                        <div class="flex justify-between items-center mb-3">
-                                            <h4 class="font-semibold">Эффект #{{ $index + 1 }}</h4>
-                                            <button wire:click="removeEffect({{ $index }})" type="button"
-                                                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">
-                                                Удалить
-                                            </button>
-                                        </div>
+                                @if(is_array($effects) && count($effects) > 0)
+                                    @foreach($effects as $index => $effect)
+                                        <div style="padding: 12px; margin-bottom: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                                <span style="font-weight: 600; font-size: 14px; color: #4b5563;">
+                                                    Эффект #{{ $index + 1 }}
+                                                    @if(!empty($effect['key']))
+                                                        - <span style="color: #7c3aed;">{{ $effect['key'] }}</span>
+                                                    @endif
+                                                </span>
+                                                <button wire:click="removeEffect({{ $index }})" type="button"
+                                                        style="background-color: #ef4444; color: white; padding: 4px 10px; border: none; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                                                    ✕ Удалить
+                                                </button>
+                                            </div>
 
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-gray-700 text-xs font-bold mb-1">Тип эффекта</label>
+                                            <!-- Тип эффекта -->
+                                            <div style="margin-bottom: 10px;">
+                                                <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                    Тип эффекта *
+                                                </label>
                                                 <select wire:model="effects.{{ $index }}.effect_type_id"
-                                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline">
+                                                        style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; background-color: white;">
                                                     <option value="">Выберите тип эффекта</option>
                                                     @foreach($effectTypes as $type)
                                                         <option value="{{ $type->id }}">{{ $type->name }}</option>
                                                     @endforeach
                                                 </select>
+                                                @error('effects.'.$index.'.effect_type_id')
+                                                <span style="color: red; font-size: 11px;">{{ $message }}</span>
+                                                @enderror
                                             </div>
 
-                                            <div>
-                                                <label class="block text-gray-700 text-xs font-bold mb-1">Данные эффекта (JSON)</label>
-                                                <textarea wire:model="effects.{{ $index }}.effect_data" rows="3"
-                                                          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
-                                                          placeholder='{"key": "value"}'></textarea>
+                                            <!-- Ключ и Значение вместо JSON -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                <!-- Ключ с автоподстановкой -->
+                                                <div>
+                                                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                        Ключ
+                                                    </label>
+                                                    <input wire:model="effects.{{ $index }}.key"
+                                                           type="text"
+                                                           list="effect-keys-list"
+                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                           placeholder="Выберите или впишите ключ"
+                                                           autocomplete="off">
+                                                    <datalist id="effect-keys-list">
+                                                        @foreach($effectKeys as $effectKey)
+                                                            <option value="{{ $effectKey }}">
+                                                        @endforeach
+                                                    </datalist>
+                                                </div>
+
+                                                <!-- Значение -->
+                                                <div>
+                                                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                        Значение
+                                                    </label>
+                                                    <input wire:model="effects.{{ $index }}.value" type="text"
+                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                           placeholder="Значение">
+                                                </div>
                                             </div>
+
+                                            <!-- Превью данных -->
+                                            @if(!empty($effect['key']) || !empty($effect['value']))
+                                                <div style="margin-top: 8px; padding: 6px 10px; background-color: #f3e8ff; border-radius: 4px; font-size: 12px; color: #6b21a8;">
+                                                    <strong>Данные эффекта:</strong>
+                                                    @if(!empty($effect['key']) && !empty($effect['value']))
+                                                        {{ $effect['key'] }}: {{ $effect['value'] }}
+                                                    @elseif(!empty($effect['key']))
+                                                        {{ $effect['key'] }}
+                                                    @elseif(!empty($effect['value']))
+                                                        {{ $effect['value'] }}
+                                                    @endif
+                                                </div>
+                                            @endif
                                         </div>
+                                    @endforeach
+                                @else
+                                    <div style="color: #9ca3af; font-size: 14px; padding: 20px; text-align: center; background: #f9fafb; border-radius: 4px;">
+                                        <p style="margin-bottom: 12px;">Нет эффектов.</p>
+                                        <p style="font-size: 12px;">Нажмите на кнопку с нужным ключом или "Свой ключ" для добавления</p>
                                     </div>
-                                @endforeach
+                                @endif
                             </div>
 
-                            <div class="flex items-center justify-between">
+                            <!-- Кнопки -->
+                            <div style="display: flex; gap: 12px;">
                                 <button type="submit"
-                                        style="background-color: #2563eb !important;
-               color: white !important;
-               padding: 10px 20px !important;
-               border: 2px solid #1d4ed8 !important;
-               border-radius: 6px !important;
-               font-weight: bold !important;
-               font-size: 14px !important;
-               cursor: pointer !important;
-               box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;"
-                                        onmouseover="this.style.backgroundColor='#1d4ed8'"
-                                        onmouseout="this.style.backgroundColor='#2563eb'">
-                                    {{ $editingId ? 'Обновить' : 'Создать' }}
+                                        style="background-color: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                                    {{ $editingId ? '✓ Обновить' : '✓ Создать' }}
                                 </button>
-                                <button wire:click="cancel" type="button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                                    Отмена
+                                <button wire:click="cancel" type="button"
+                                        style="background-color: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                                    ✗ Отмена
                                 </button>
                             </div>
                         </form>
                     </div>
                 @endif
 
-                @if(!$showForm)
-                    <div class="mb-4">
-                        <button wire:click="create" style="background-color: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                            Создать событие
-                        </button>
-                    </div>
-                @endif
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
+                <!-- Таблица событий -->
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
                         <thead>
-                        <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                            <th class="py-3 px-6 text-left">ID</th>
-                            <th class="py-3 px-6 text-left">Название</th>
-                            <th class="py-3 px-6 text-left">Описание</th>
-                            <th class="py-3 px-6 text-center">Эффекты</th>
-                            <th class="py-3 px-6 text-center">Действия</th>
+                        <tr style="background-color: #f3f4f6; color: #4b5563; text-transform: uppercase; font-size: 14px;">
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">ID</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">Название</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">Описание</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">Эффекты</th>
+                            <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">Действия</th>
                         </tr>
                         </thead>
-                        <tbody class="text-gray-600 text-sm">
-                        @foreach($events as $event)
-                            <tr class="border-b border-gray-200 hover:bg-gray-100">
-                                <td class="py-3 px-6">{{ $event->id }}</td>
-                                <td class="py-3 px-6 font-medium">{{ $event->name }}</td>
-                                <td class="py-3 px-6">{{ Str::limit($event->description, 50) }}</td>
-                                <td class="py-3 px-6 text-center">
-                                        <span class="bg-blue-200 text-blue-600 py-1 px-3 rounded-full text-xs">
-                                            {{ $event->effects->count() }}
-                                        </span>
+                        <tbody style="color: #4b5563; font-size: 14px;">
+                        @forelse($events as $event)
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 12px;">{{ $event->id }}</td>
+                                <td style="padding: 12px; font-weight: 500;">{{ $event->name }}</td>
+                                <td style="padding: 12px;">{{ \Illuminate\Support\Str::limit($event->description, 50) }}</td>
+                                <td style="padding: 12px; text-align: center;">
+                                    @php
+                                        $effectsCount = is_countable($event->effects) ? count($event->effects) : 0;
+                                    @endphp
+                                    @if($effectsCount > 0)
+                                        <span style="background-color: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                                {{ $effectsCount }}
+                                            </span>
+                                    @else
+                                        <span style="color: #9ca3af;">0</span>
+                                    @endif
                                 </td>
-                                <td class="py-3 px-6 text-center">
-                                    <button wire:click="edit({{ $event->id }})"
-                                            class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-xs mr-2">
-                                        Редактировать
-                                    </button>
-                                    <button wire:click="delete({{ $event->id }})"
-                                            wire:confirm="Вы уверены, что хотите удалить это событие?"
-                                            class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                        Удалить
-                                    </button>
+                                <td style="padding: 12px; text-align: center;">
+                                    <div style="display: flex; justify-content: center; gap: 8px;">
+                                        <button wire:click="edit({{ $event->id }})"
+                                                style="background-color: #f59e0b; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                            ✏️ Ред.
+                                        </button>
+                                        <button wire:click="delete({{ $event->id }})"
+                                                wire:confirm="Удалить событие '{{ $event->name }}'?"
+                                                style="background-color: #ef4444; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                            🗑️ Уд.
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="5" style="padding: 24px; text-align: center; color: #9ca3af;">
+                                    События не найдены
+                                </td>
+                            </tr>
+                        @endforelse
                         </tbody>
                     </table>
                 </div>
 
-                <div class="mt-4">
+                <div style="margin-top: 16px;">
                     {{ $events->links() }}
                 </div>
             </div>
