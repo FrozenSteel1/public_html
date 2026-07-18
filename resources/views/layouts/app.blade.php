@@ -55,6 +55,12 @@
                        class="px-3 py-2 rounded text-sm {{ request()->routeIs('admin.games') ? 'bg-gray-900' : 'hover:bg-gray-700' }}">
                         🎮 Игры
                     </a>
+
+                        <a href="{{ route('scenarios') }}"
+                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('admin.games') ? 'bg-gray-900' : 'hover:bg-gray-700' }}">
+                            Начать игру
+                        </a>
+
                 </div>
 
                 <!-- Пользовательское меню -->

@@ -16,10 +16,18 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // User::factory(10)->create();
+        $this->call([
+            EffectTypesSeeder::class,
+            CompaniesSeeder::class,
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
         ]);
+        // Создаём пользователя только если его нет
+        if (User::where('email', 'admin@example.com')->doesntExist()) {
+            User::create([
+                'name' => 'Admin',
+                'email' => 'admin@example.com',
+                'password' => bcrypt('password'),
+            ]);
+        }
     }
 }

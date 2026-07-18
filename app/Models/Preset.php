@@ -16,6 +16,22 @@ class Preset extends Model
     protected $casts = [
         'settings' => 'array',
     ];
+    /**
+     * Получить settings как массив
+     */
+    public function getSettingsAttribute($value): array
+    {
+        if (is_null($value)) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
 
     // Связь с таблицей scenarios (принадлежит сценарию)
     public function scenario(): BelongsTo
