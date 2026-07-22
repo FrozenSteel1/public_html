@@ -376,6 +376,12 @@ class GamePlay extends Component
                 'current_scene_id' => $this->game->current_scene_id,
             ]);
 
+            // ========== ПРОВЕРКА СЕССИИ ДО ==========
+            Log::info('Сессия ДО makeChoice', [
+                'game_messages' => session()->get('game_messages', []),
+                'all_session' => session()->all(),
+            ]);
+
             $this->dispatch('console-log', [
                 'type' => 'info',
                 'title' => '🔍 СОСТОЯНИЕ ДО ВЫБОРА',
@@ -388,6 +394,11 @@ class GamePlay extends Component
             Log::info('selectChoice: результат получен', [
                 'new_scene_id' => $result['next_scene']->id ?? null,
                 'new_scene_title' => $result['next_scene']->title ?? null,
+            ]);
+
+            // ========== ПРОВЕРКА СЕССИИ ПОСЛЕ ==========
+            Log::info('Сессия ПОСЛЕ makeChoice', [
+                'game_messages' => session()->get('game_messages', []),
             ]);
 
             $this->game = $result['game'];
@@ -413,8 +424,20 @@ class GamePlay extends Component
                 ];
             }, $result['triggered_events'] ?? []);
 
+            // ========== ПОЛУЧАЕМ СООБЩЕНИЯ ==========
             $this->gameMessages = $this->effectManager->getMessages();
 
+            // Если сообщений нет — проверяем сессию напрямую
+            if (empty($this->gameMessages)) {
+                $this->gameMessages = session()->get('game_messages', []);
+                Log::info('Сообщения из сессии напрямую', ['messages' => $this->gameMessages]);
+            }
+
+            Log::info('Сообщения в selectChoice', [
+                'game_messages' => $this->gameMessages,
+            ]);
+
+            // Если есть сообщения — показываем модальное окно
             if (count($this->gameMessages) > 0) {
                 $this->currentModalMessage = $this->gameMessages[0];
                 $this->showMessageModal = true;
@@ -427,10 +450,15 @@ class GamePlay extends Component
                     'triggered_events' => $result['triggered_events'],
                 ];
 
+                Log::info('Модальное окно открыто', [
+                    'message' => $this->currentModalMessage['text'],
+                ]);
+
                 $this->renderKey++;
                 return;
             }
 
+            // Если сообщений нет — сразу применяем результат
             $this->applyGameResult($result);
 
         } catch (\Exception $e) {

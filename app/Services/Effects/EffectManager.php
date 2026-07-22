@@ -15,25 +15,22 @@ class EffectManager
         $this->registerHandlers();
     }
 
-    /**
-     * Зарегистрировать все обработчики эффектов
-     */
     private function registerHandlers(): void
     {
         $handlers = [
             new ParameterChangeHandler(),
             new ParameterDecreaseHandler(),
             new SupportHandler(),
-            new SupportHandler(), // Для type 4 (Содействовать) используем тот же обработчик
-            new MessageHandler(), // Для type 5 (Подать сигнал риска) - используем как сообщение
-            new MessageHandler(), // Для type 6 (Критиковать) - используем как сообщение
-            new MessageHandler(), // Для type 7 (Тормозить) - используем как сообщение
-            new MessageHandler(), // Для type 8 (Блокировать) - используем как сообщение
-            new MessageHandler(), // Для type 9 (Отойти в сторону) - используем как сообщение
-            new ParameterChangeHandler(), // Для type 10 (Сила реакции) - применяем как изменение параметров
+            new SupportHandler(), // Для type 4 (Содействовать)
+            new MessageHandler(), // Для type 5 (Подать сигнал риска)
+            new MessageHandler(), // Для type 6 (Критиковать)
+            new MessageHandler(), // Для type 7 (Тормозить)
+            new MessageHandler(), // Для type 8 (Блокировать)
+            new MessageHandler(), // Для type 9 (Отойти в сторону)
+            new ParameterChangeHandler(), // Для type 10 (Сила реакции)
             new SceneTransitionHandler(), // Для type 11 (Смена сцены)
-            new MessageHandler(), // Для type 12 (Сообщение) - добавим позже
-            new DelayedMessageHandler(), // Для type 13 (Отложенное сообщение) - добавим позже
+            //new MessageHandler(), // Для type 12 (Сообщение)
+            new DelayedMessageHandler(), // Для type 13 (Отложенное сообщение)
         ];
 
         foreach ($handlers as $handler) {
@@ -41,9 +38,6 @@ class EffectManager
         }
     }
 
-    /**
-     * Обработать эффект
-     */
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
         $effectTypeName = $effect->effectType->name ?? 'Неизвестный тип';
@@ -73,9 +67,6 @@ class EffectManager
         return $currentState;
     }
 
-    /**
-     * Получить все отложенные сообщения и очистить их
-     */
     public function getDelayedMessages(): array
     {
         $messages = session()->get('delayed_game_messages', []);
@@ -92,27 +83,17 @@ class EffectManager
         }
 
         session()->put('delayed_game_messages', $remaining);
-
         return $ready;
     }
 
-    /**
-     * Получить все сообщения и очистить их
-     */
     public function getMessages(): array
     {
         $messages = session()->get('game_messages', []);
-        Log::info('EffectManager::getMessages вызван', [
-            'messages_count' => count($messages),
-            'messages' => $messages,
-        ]);
+        Log::info('EffectManager::getMessages', ['messages' => $messages]);
         session()->put('game_messages', []);
         return $messages;
     }
 
-    /**
-     * Получить поддержку акторов
-     */
     public function getSupports(): array
     {
         $supports = session()->get('actor_supports', []);
@@ -120,9 +101,6 @@ class EffectManager
         return $supports;
     }
 
-    /**
-     * Проверить, есть ли принудительный переход на сцену
-     */
     public function getForcedScene(): ?array
     {
         $forced = session()->get('forced_next_scene');
