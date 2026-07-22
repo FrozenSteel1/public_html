@@ -1,0 +1,143 @@
+"=== LARAVEL VERSION ==="
+Laravel Framework 13.7.0
+""
+"=== PROJECT INFO ==="
+
+  Environment ........................................................................................................  
+  Application Name ........................................................................................... Laravel  
+  Laravel Version ............................................................................................. 13.7.0  
+  PHP Version .................................................................................................. 8.5.1  
+  Composer Version ............................................................................................. 2.9.5  
+  Environment .................................................................................................. local  
+  Debug Mode ................................................................................................. ENABLED  
+  URL ...................................................................................................... localhost  
+  Maintenance Mode ............................................................................................... OFF  
+  Timezone ....................................................................................................... UTC  
+  Locale .......................................................................................................... ru  
+
+  Cache ..............................................................................................................  
+  Config .................................................................................................. NOT CACHED  
+  Events .................................................................................................. NOT CACHED  
+  Routes .................................................................................................. NOT CACHED  
+  Views ....................................................................................................... CACHED  
+
+  Drivers ............................................................................................................  
+  Broadcasting ................................................................................................... log  
+  Cache ..................................................................................................... database  
+  Database ..................................................................................................... mysql  
+  Logs ................................................................................................ stack / single  
+  Mail ........................................................................................................... log  
+  Queue ..................................................................................................... database  
+  Session ................................................................................................... database  
+
+  Storage ............................................................................................................  
+  C:\OSPanel\home\game\public_html\public\storage ............................................................. LINKED  
+
+  Livewire ...........................................................................................................  
+  Livewire .................................................................................................... v3.8.0  
+
+""
+"=== ROUTES ==="
+
+  GET|HEAD  / ...................................................................................... routes/web.php:19
+  POST      _boost/browser-logs ............ boost.browser-logs › vendor/laravel/boost/src/BoostServiceProvider.php:95
+  GET|HEAD  _debugbar/assets ................. debugbar.assets › Fruitcake\LaravelDebugbar › AssetController@getAssets
+  DELETE    _debugbar/cache/{key} ......... debugbar.cache.delete › Fruitcake\LaravelDebugbar › CacheController@delete
+  GET|HEAD  _debugbar/clockwork/{id} debugbar.clockwork › Fruitcake\LaravelDebugbar › OpenHandlerController@clockwork
+  GET|HEAD  _debugbar/open ........... debugbar.openhandler › Fruitcake\LaravelDebugbar › OpenHandlerController@handle
+  POST      _debugbar/queries/explain debugbar.queries.explain › Fruitcake\LaravelDebugbar › QueriesController@explain
+  GET|HEAD  admin/actors ................................................... admin.actors › App\Livewire\ActorsManager
+  GET|HEAD  admin/companies .......................................... admin.companies › App\Livewire\CompaniesManager
+  GET|HEAD  admin/company-scenarios .................... admin.company-scenarios › App\Livewire\CompanyScenarioManager
+  GET|HEAD  admin/effect-types .................................. admin.effect-types › App\Livewire\EffectTypesManager
+  GET|HEAD  admin/events ................................................... admin.events › App\Livewire\EventsManager
+  GET|HEAD  admin/games ...................................................... admin.games › App\Livewire\GamesManager
+  GET|HEAD  admin/presets ................................................ admin.presets › App\Livewire\PresetsManager
+  GET|HEAD  admin/scenarios .......................................... admin.scenarios › App\Livewire\ScenariosManager
+  GET|HEAD  admin/scenes ................................................... admin.scenes › App\Livewire\ScenesManager
+  GET|HEAD  api/user ................................................................................ routes/api.php:6
+  GET|HEAD  dashboard .................................................................. dashboard › routes/web.php:28
+  GET|HEAD  forgot-password .................. password.request › Laravel\Fortify › PasswordResetLinkController@create
+  POST      forgot-password ..................... password.email › Laravel\Fortify › PasswordResetLinkController@store
+  GET|HEAD  game/continue/{gameId} ............................................. game.continue › App\Livewire\GamePlay
+  GET|HEAD  game/play/{scenarioId} ................................................. game.play › App\Livewire\GamePlay
+  GET|HEAD  game/play/{scenarioId}/{difficulty?} ................................... game.play › App\Livewire\GamePlay
+  GET|HEAD  livewire/livewire.js ......................... Livewire\Mechanisms › FrontendAssets@returnJavaScriptAsFile
+  GET|HEAD  livewire/livewire.min.js.map ................................... Livewire\Mechanisms › FrontendAssets@maps
+  GET|HEAD  livewire/preview-file/{filename} livewire.preview-file › Livewire\Features › FilePreviewController@handle
+  POST      livewire/update .............. default.livewire.update › Livewire\Mechanisms › HandleRequests@handleUpdate
+  POST      livewire/upload-file .............. livewire.upload-file › Livewire\Features › FileUploadController@handle
+  GET|HEAD  login .................................... login › Laravel\Fortify › AuthenticatedSessionController@create
+  POST      login ............................... login.store › Laravel\Fortify › AuthenticatedSessionController@store
+  POST      logout ................................. logout › Laravel\Fortify › AuthenticatedSessionController@destroy
+  GET|HEAD  my-games ............................................................. user.games › App\Livewire\UserGames
+  GET|HEAD  register .................................... register › Laravel\Fortify › RegisteredUserController@create
+  POST      register ............................... register.store › Laravel\Fortify › RegisteredUserController@store
+  POST      reset-password ........................... password.update › Laravel\Fortify › NewPasswordController@store
+  GET|HEAD  reset-password/{token} ................... password.reset › Laravel\Fortify › NewPasswordController@create
+  GET|HEAD  sanctum/csrf-cookie .................... sanctum.csrf-cookie › Laravel\Sanctum › CsrfCookieController@show
+  GET|HEAD  scenarios ...................................................... scenarios › App\Livewire\ScenarioSelector
+  GET|HEAD  storage/{path} storage.local › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvid…
+  PUT       storage/{path} storage.local.upload › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServic…
+  GET|HEAD  two-factor-challenge . two-factor.login › Laravel\Fortify › TwoFactorAuthenticatedSessionController@create
+  POST      two-factor-challenge two-factor.login.store › Laravel\Fortify › TwoFactorAuthenticatedSessionController@s…
+  GET|HEAD  up ........... vendor/laravel/framework/src/Illuminate/Foundation/Configuration/ApplicationBuilder.php:223
+  GET|HEAD  user/confirm-password ............ password.confirm › Laravel\Fortify › ConfirmablePasswordController@show
+  POST      user/confirm-password ..... password.confirm.store › Laravel\Fortify › ConfirmablePasswordController@store
+  GET|HEAD  user/confirmed-password-status password.confirmation › Laravel\Fortify › ConfirmedPasswordStatusControlle…
+  POST      user/confirmed-two-factor-authentication two-factor.confirm › Laravel\Fortify › ConfirmedTwoFactorAuthent…
+  PUT       user/password ......................... user-password.update › Laravel\Fortify › PasswordController@update
+  GET|HEAD  user/profile ............................... profile.show › Laravel\Jetstream › UserProfileController@show
+  PUT       user/profile-information user-profile-information.update › Laravel\Fortify › ProfileInformationController…
+  POST      user/two-factor-authentication two-factor.enable › Laravel\Fortify › TwoFactorAuthenticationController@st…
+  DELETE    user/two-factor-authentication two-factor.disable › Laravel\Fortify › TwoFactorAuthenticationController@d…
+  GET|HEAD  user/two-factor-qr-code ............ two-factor.qr-code › Laravel\Fortify › TwoFactorQrCodeController@show
+  GET|HEAD  user/two-factor-recovery-codes two-factor.recovery-codes › Laravel\Fortify › RecoveryCodeController@index
+  POST      user/two-factor-recovery-codes two-factor.regenerate-recovery-codes › Laravel\Fortify › RecoveryCodeContr…
+  GET|HEAD  user/two-factor-secret-key ... two-factor.secret-key › Laravel\Fortify › TwoFactorSecretKeyController@show
+
+                                                                                                   Showing [56] routes
+
+""
+"=== MIGRATIONS ==="
+
+  Migration name ...................................................................................... Batch / Status  
+  0001_01_01_000000_create_users_table ....................................................................... [1] Ran  
+  0001_01_01_000001_create_cache_table ....................................................................... [1] Ran  
+  0001_01_01_000002_create_jobs_table ........................................................................ [1] Ran  
+  2026_04_25_121708_add_two_factor_columns_to_users_table .................................................... [1] Ran  
+  2026_04_25_121726_create_personal_access_tokens_table ...................................................... [1] Ran  
+  2026_04_27_161258_create_companies_table ................................................................... [1] Ran  
+  2026_04_27_174549_create_scenarios_table ................................................................... [1] Ran  
+  2026_04_27_175020_create_company_scenario_table ............................................................ [1] Ran  
+  2026_04_27_180544_create_presets_table ..................................................................... [1] Ran  
+  2026_04_27_182311_create_scenes_table ...................................................................... [1] Ran  
+  2026_04_27_183717_create_actors_table ...................................................................... [1] Ran  
+  2026_04_27_184431_create_events_table ...................................................................... [1] Ran  
+  2026_04_27_184499_create_effect_types_table ................................................................ [1] Ran  
+  2026_04_27_184500_create_effects_table ..................................................................... [1] Ran  
+  2026_04_27_192056_create_games_table ....................................................................... [1] Ran  
+  2026_04_27_192750_create_game_histories_table .............................................................. [1] Ran  
+  2026_04_27_194613_create_choices_table ..................................................................... [1] Ran  
+  2026_05_11_172639_add_company_id_to_scenarios_table ........................................................ [2] Ran  
+  2026_07_18_140503_add_game_columns_to_games_table .......................................................... [2] Ran  
+  2026_07_18_153950_add_indexes_for_performance .............................................................. [3] Ran  
+  2026_07_22_154810_create_parameter_definitions_table ....................................................... [4] Ran  
+
+""
+"=== PACKAGES ==="
+barryvdh/laravel-ide-helper 3.7.0   Laravel IDE Helper, generates correct PHPDocs for all Facade classes, to impro...
+fakerphp/faker              1.24.1  Faker is a PHP library that generates fake data for you.
+fruitcake/laravel-debugbar  4.2.8   PHP Debugbar integration for Laravel
+laravel/boost               2.4.13  Laravel Boost accelerates AI-assisted development by providing the essential c...
+laravel/framework           13.7.0  The Laravel Framework.
+laravel/jetstream           5.5.2   Tailwind scaffolding for the Laravel framework.
+laravel/pail                1.2.6   Easily delve into your Laravel application's log files directly from the comma...
+laravel/pint                1.29.1  An opinionated code formatter for PHP.
+laravel/sanctum             4.3.1   Laravel Sanctum provides a featherweight authentication system for SPAs and si...
+laravel/tinker              3.0.2   Powerful REPL for the Laravel framework.
+livewire/livewire           3.8.0   A front-end framework for Laravel.
+mockery/mockery             1.6.12  Mockery is a simple yet flexible PHP mock object framework
+nunomaduro/collision        8.9.4   Cli error handling for console/command-line PHP applications.
+phpunit/phpunit             12.5.24 The PHP Unit Testing framework.
+spatie/laravel-data         4.22.1  Create unified resources and data transfer objects
