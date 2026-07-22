@@ -489,6 +489,15 @@ class GamePlay extends Component
         $this->currentState = $result['new_state'] ?? $this->game->getCurrentState(true);
         $this->availableChoices = $this->gameService->getAvailableChoices($this->game);
 
+        // ========== ПРОВЕРКА: если сцены нет или игра завершена ==========
+        if ($this->game->isFinished() || !$this->scene) {
+            $this->isFinished = true;
+            $this->renderKey++;
+            session()->flash('message', 'Игра завершена!');
+            return;
+        }
+        // ================================================================
+
         $this->loadHistoryWithMonths();
         $this->loadSceneActors();
 
@@ -507,8 +516,6 @@ class GamePlay extends Component
         }
 
         $this->renderKey++;
-
-        // Обновляем таймер для новой сцены
         $this->restartTimer();
     }
 

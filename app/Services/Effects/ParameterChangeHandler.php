@@ -4,6 +4,7 @@ namespace App\Services\Effects;
 
 use App\Models\Effect;
 use App\Models\Game;
+use Illuminate\Support\Facades\Log;
 
 class ParameterChangeHandler implements EffectHandlerInterface
 {
@@ -14,32 +15,33 @@ class ParameterChangeHandler implements EffectHandlerInterface
         $value = $data['value'] ?? null;
 
         if (!$key || !$value) {
+            Log::warning('ParameterChangeHandler: пропущен эффект', [
+                'effect_id' => $effect->id,
+                'data' => $data,
+            ]);
             return $currentState;
         }
 
-        // Парсим значение (например, "+5", "-3", "10")
-        $numericValue = (int) filter_var($value, FILTER_SANITIZE_NUMBER_INT);
-        $operation = str_starts_with($value, '+') ? '+' :
-            (str_starts_with($value, '-') ? '-' : '=');
+        // Берём модуль числа, чтобы всегда прибавлять положительное значение
+        $numericValue = abs((int) filter_var($value, FILTER_SANITIZE_NUMBER_INT));
+
+        Log::info('ParameterChangeHandler: увеличение', [
+            'key' => $key,
+            'value' => $numericValue,
+            'old_state' => $currentState[$key] ?? 0,
+        ]);
 
         if (!isset($currentState[$key])) {
             $currentState[$key] = 0;
         }
 
-        switch ($operation) {
-            case '+':
-                $currentState[$key] += $numericValue;
-                break;
-            case '-':
-                $currentState[$key] -= $numericValue;
-                break;
-            case '=':
-                $currentState[$key] = $numericValue;
-                break;
-        }
-
-        // Ограничиваем значения диапазоном 0-100
+        $currentState[$key] += $numericValue;
         $currentState[$key] = max(0, min(100, $currentState[$key]));
+
+        Log::info('ParameterChangeHandler: результат', [
+            'key' => $key,
+            'new_state' => $currentState[$key],
+        ]);
 
         return $currentState;
     }
