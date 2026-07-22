@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Preset;
 use App\Models\GameHistory;
 use App\Models\EffectType;
+use App\Services\Effects\EffectManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,13 @@ use Illuminate\Support\Facades\Log;
 class GameService
 {
     const CACHE_TTL = 3600; // 1 час
+
+    private EffectManager $effectManager;
+
+    public function __construct()
+    {
+        $this->effectManager = new EffectManager();
+    }
 
     /**
      * Старт новой игры
@@ -119,7 +127,7 @@ class GameService
         $currentState = $game->getCurrentState();
 
         // Применяем эффекты события выбора
-        $newState = $this->applyEventEffects($currentState, $choice->event);
+        $newState = $this->applyEventEffects($game, $currentState, $choice->event);
 
         // Записываем в историю
         GameHistory::create([
@@ -134,7 +142,7 @@ class GameService
         foreach ($triggeredEvents as $trigger) {
             $event = Event::with('effects.effectType')->find($trigger['event_id']);
             if ($event) {
-                $newState = $this->applyEventEffects($newState, $event);
+                $newState = $this->applyEventEffects($game, $newState, $event);
 
                 GameHistory::create([
                     'game_id' => $gameId,
@@ -188,7 +196,7 @@ class GameService
     /**
      * Применить эффекты события к состоянию
      */
-    private function applyEventEffects(array $state, Event $event): array
+    private function applyEventEffects(Game $game, array $state, Event $event): array
     {
         foreach ($event->effects as $effect) {
             $state = $this->applyEffect($state, $effect);
@@ -196,12 +204,23 @@ class GameService
         return $state;
     }
 
-    /**
-     * Применить один эффект к состоянию
-     */
     private function applyEffect(array $state, $effect): array
     {
-        $data = json_decode($effect->effect_data, true);
+        // Данные уже массив благодаря касту в модели Effect
+        $data = $effect->effect_data;
+
+        // Если вдруг строка — декодируем
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+            if (is_string($data)) {
+                $data = json_decode($data, true);
+            }
+        }
+
+        if (!is_array($data)) {
+            return $state;
+        }
+
         $key = $data['key'] ?? null;
         $value = $data['value'] ?? null;
 
@@ -209,7 +228,6 @@ class GameService
             return $state;
         }
 
-        // Парсим значение (например, "+5", "-3", "10")
         $numericValue = (int) filter_var($value, FILTER_SANITIZE_NUMBER_INT);
         $operation = str_starts_with($value, '+') ? '+' :
             (str_starts_with($value, '-') ? '-' : '=');
@@ -230,7 +248,6 @@ class GameService
                 break;
         }
 
-        // Ограничиваем значения диапазоном 0-100
         $state[$key] = max(0, min(100, $state[$key]));
 
         return $state;
@@ -238,22 +255,22 @@ class GameService
 
     /**
      * Обработать триггеры акторов
+     * Каждое уникальное событие актора срабатывает только один раз за ход
      */
     private function processActorTriggers(Game $game, array $currentState): array
     {
         $triggeredEvents = [];
+        $processedEvents = []; // Для отслеживания уже обработанных событий
         $maxIterations = 5;
         $iteration = 0;
 
-        // Загружаем всех акторов (без кэширования для простоты)
-        $actors = \App\Models\Actor::all();
+        $actors = $this->getActors();
 
         do {
             $foundTrigger = false;
             $iteration++;
 
             foreach ($actors as $actor) {
-                // Получаем триггеры и приводим к массиву
                 $triggers = $actor->triggers;
 
                 if (is_string($triggers)) {
@@ -276,11 +293,20 @@ class GameService
                         continue;
                     }
 
+                    // Проверяем, не было ли уже это событие в текущем ходе
+                    $eventKey = $actor->id . '_' . $eventId;
+                    if (isset($processedEvents[$eventKey])) {
+                        continue; // Пропускаем, если уже обработано
+                    }
+
                     if ($this->checkTriggerCondition($currentState, $key, $value)) {
                         $event = Event::with('effects.effectType')->find($eventId);
                         if ($event) {
                             // Применяем эффекты события
-                            $currentState = $this->applyEventEffects($currentState, $event);
+                            $currentState = $this->applyEventEffects($game, $currentState, $event);
+
+                            // Отмечаем событие как обработанное
+                            $processedEvents[$eventKey] = true;
 
                             // Собираем сообщения из эффектов события
                             $messages = [];
@@ -319,11 +345,45 @@ class GameService
      */
     private function checkTriggerCondition(array $state, string $key, string $value): bool
     {
-        if (!isset($state[$key])) {
+        // Ищем значение в состоянии
+        $currentValue = null;
+
+        // 1. Проверяем прямой доступ по ключу
+        if (isset($state[$key])) {
+            $currentValue = $state[$key];
+        }
+
+        // 2. Если не нашли, ищем в числовых индексах
+        if ($currentValue === null) {
+            foreach ($state as $item) {
+                if (is_array($item) && isset($item['key']) && $item['key'] === $key) {
+                    $currentValue = $item['value'];
+                    break;
+                }
+            }
+        }
+
+        // 3. Если всё ещё не нашли, ищем в любых вложенных массивах
+        if ($currentValue === null) {
+            foreach ($state as $item) {
+                if (is_array($item)) {
+                    foreach ($item as $subKey => $subValue) {
+                        if ($subKey === $key) {
+                            $currentValue = $subValue;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Если значение не найдено - триггер не срабатывает
+        if ($currentValue === null) {
             return false;
         }
 
-        $currentValue = $state[$key];
+        // Приводим к числу для сравнения
+        $currentValue = (int) $currentValue;
 
         // Парсим диапазон, например "0-20", "21-40", "81-100"
         if (strpos($value, '-') !== false) {
@@ -351,14 +411,27 @@ class GameService
      */
     private function determineNextScene(Game $game, Event $event): ?Scene
     {
-        Log::info('Определение следующей сцены', [
+        Log::info('determineNextScene начат', [
             'game_id' => $game->id,
             'current_scene_id' => $game->current_scene_id,
             'event_id' => $event->id,
             'event_name' => $event->name,
         ]);
 
-        // Ищем эффект типа "Смена сцены"
+        // Проверяем принудительный переход из эффекта
+        $forced = $this->effectManager->getForcedScene();
+        if ($forced && isset($forced['scene_id'])) {
+            $scene = Scene::find($forced['scene_id']);
+            if ($scene) {
+                Log::info('Принудительный переход на сцену', [
+                    'scene_id' => $scene->id,
+                    'scene_title' => $scene->title,
+                ]);
+                return $scene;
+            }
+        }
+
+        // Ищем эффект типа "Смена сцены" в событии
         $sceneTransitionEffect = $event->effects->first(function ($effect) {
             return $effect->effectType && $effect->effectType->name === 'Смена сцены';
         });
@@ -473,12 +546,16 @@ class GameService
         $availableChoices = [];
 
         foreach ($choices as $choice) {
+            // Если есть условия - проверяем их
             if ($choice->conditions) {
                 $conditions = $choice->conditions;
 
+                // Если условия - строка JSON, декодируем
                 if (is_string($conditions)) {
                     $conditions = json_decode($conditions, true);
                 }
+
+                // Если после декодирования всё ещё строка (двойное экранирование)
                 if (is_string($conditions)) {
                     $conditions = json_decode($conditions, true);
                 }
@@ -507,7 +584,23 @@ class GameService
                 continue;
             }
 
-            if (!isset($state[$key])) {
+            // Ищем значение в состоянии (аналогично checkTriggerCondition)
+            $currentValue = null;
+
+            if (isset($state[$key])) {
+                $currentValue = $state[$key];
+            }
+
+            if ($currentValue === null) {
+                foreach ($state as $item) {
+                    if (is_array($item) && isset($item['key']) && $item['key'] === $key) {
+                        $currentValue = $item['value'];
+                        break;
+                    }
+                }
+            }
+
+            if ($currentValue === null) {
                 return false;
             }
 
@@ -543,5 +636,42 @@ class GameService
     {
         Cache::forget($this->getCacheKey($gameId));
         Cache::forget("game_state_{$gameId}");
+    }
+
+    /**
+     * Получить всех акторов
+     */
+    private function getActors(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\Actor::all();
+    }
+    public function getTimeLimit(int $sceneId, string $difficulty, int $userId): int
+    {
+        $scene = Scene::find($sceneId);
+        if (!$scene) {
+            return 60;
+        }
+
+        $baseTime = $scene->time_limit ?? 60;
+
+        $multipliers = [
+            'easy' => 1.0,
+            'medium' => 0.75,
+            'hard' => 0.5,
+            'expert' => 0.25,
+            'custom' => 0.75,
+        ];
+
+        $time = $baseTime * ($multipliers[$difficulty] ?? 1.0);
+
+        $completedGamesCount = Game::where('user_id', $userId)
+            ->where('status', 'completed')
+            ->count();
+
+        // Если за опыт отнимается время
+        $penalty = min(floor($completedGamesCount / 5) * 0.1, 0.5);
+        $time = $time * (1 - $penalty); // ВНИМАНИЕ: минус!
+
+        return (int) ceil($time);
     }
 }

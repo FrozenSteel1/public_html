@@ -12,6 +12,7 @@ use App\Livewire\PresetsManager;
 use App\Livewire\GamesManager;
 use App\Livewire\GamePlay;
 use App\Livewire\ScenarioSelector;
+use App\Livewire\UserGames;
 use App\Controllers\TestController;
 
 
@@ -55,8 +56,28 @@ Route::middleware(['auth'])->group(function () {
         ->name('game.play')
         ->where('scenarioId', '[0-9]+');
 });
-Route::middleware(['auth'])->prefix('test')->group(function () {
-    Route::get('/game/{gameId}', [TestController::class, 'showGame']);
-    Route::get('/state/{gameId}', [TestController::class, 'showState']);
-});
+//Route::middleware(['auth'])->prefix('test')->group(function () {
+//    Route::get('/game/{gameId}', [TestController::class, 'showGame']);
+//    Route::get('/state/{gameId}', [TestController::class, 'showState']);
+//});
 
+Route::middleware(['auth'])->group(function () {
+    // Страница со списком игр
+    Route::get('/my-games', UserGames::class)
+        ->name('user.games');
+
+    // Страница выбора сценария
+    Route::get('/scenarios', ScenarioSelector::class)
+        ->name('scenarios');
+
+    // Новая игра (передаем scenarioId и difficulty)
+    Route::get('/game/play/{scenarioId}/{difficulty?}', GamePlay::class)
+        ->name('game.play')
+        ->where('scenarioId', '[0-9]+')
+        ->where('difficulty', 'easy|medium|hard|expert|custom');
+
+    // Продолжить игру (передаем gameId)
+    Route::get('/game/continue/{gameId}', GamePlay::class)
+        ->name('game.continue')
+        ->where('gameId', '[0-9]+');
+});

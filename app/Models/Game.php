@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
-
-
+use Illuminate\Support\Facades\Log;
 
 class Game extends Model
 {
@@ -49,14 +48,89 @@ class Game extends Model
         return $this->belongsTo(Scene::class, 'current_scene_id');
     }
 
+    /**
+     * Получить текущее состояние игры с кэшированием
+     */
+    public function getCurrentState(bool $forceRefresh = false): array
+    {
+        $cacheKey = "game_state_{$this->id}";
 
+        if (!$forceRefresh) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                return $cached;
+            }
+        }
+
+        $state = $this->buildCurrentState();
+        Cache::put($cacheKey, $state, 300);
+
+        return $state;
+    }
+
+    /**
+     * Построить состояние из истории
+     */
+    private function buildCurrentState(): array
+    {
+        $preset = Preset::where('scenario_id', $this->currentScene->scenario_id)
+            ->where('difficulty', $this->difficulty)
+            ->first();
+
+        if (!$preset) {
+            return [];
+        }
+
+        $settings = $preset->settings;
+        if (is_string($settings)) {
+            $settings = json_decode($settings, true);
+        }
+        if (is_string($settings)) {
+            $settings = json_decode($settings, true);
+        }
+
+        // Создаём состояние в формате [key => value]
+        $state = [];
+        if (is_array($settings)) {
+            foreach ($settings as $item) {
+                if (is_array($item) && isset($item['key']) && isset($item['value'])) {
+                    $state[$item['key']] = (int) $item['value'];
+                }
+            }
+        }
+
+        // Воспроизводим все события из истории
+        $histories = $this->gameHistories()
+            ->with('event.effects')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($histories as $history) {
+            foreach ($history->event->effects as $effect) {
+                $state = $this->applyEffect($state, $effect);
+            }
+        }
+
+        return $state;
+    }
 
     /**
      * Применить эффект к состоянию
      */
     private function applyEffect(array $state, Effect $effect): array
     {
-        $data = json_decode($effect->effect_data, true);
+        // Получаем данные эффекта (уже массив благодаря касту)
+        $data = $effect->effect_data;
+
+        // Если всё же строка - декодируем
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+        // Если всё ещё строка (двойное экранирование)
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+
         $key = $data['key'] ?? null;
         $value = $data['value'] ?? null;
 
@@ -105,110 +179,29 @@ class Game extends Model
     public function getNextScene(): ?Scene
     {
         if (!$this->current_scene_id) {
+            Log::info('getNextScene: нет current_scene_id');
             return null;
         }
 
         $currentOrder = $this->currentScene->order;
         $scenarioId = $this->currentScene->scenario_id;
 
-        return Scene::where('scenario_id', $scenarioId)
+        Log::info('getNextScene: поиск', [
+            'current_order' => $currentOrder,
+            'scenario_id' => $scenarioId,
+        ]);
+
+        $nextScene = Scene::where('scenario_id', $scenarioId)
             ->where('order', '>', $currentOrder)
-            ->orderBy('order')
-            ->first();
-    }
-
-
-
-
-    /**
-     * Применить эффекты события к состоянию
-     */
-    public function applyEventEffects(array $state, Event $event): array
-    {
-        foreach ($event->effects as $effect) {
-            $state = $this->applyEffect($state, $effect);
-        }
-        return $state;
-    }
-
-    /**
-     * Получить следующую сцену на основе эффектов события
-     * Если есть эффект типа "Смена сцены" - возвращаем целевую сцену
-     * Иначе - следующую по порядку
-     */
-    public function getNextSceneAfterEvent(Event $event): ?Scene
-    {
-        // Ищем эффект типа "Смена сцены"
-        $sceneTransitionEffect = $event->effects->first(function ($effect) {
-            return $effect->effectType->name === 'Смена сцены';
-        });
-
-        if ($sceneTransitionEffect) {
-            $data = $sceneTransitionEffect->effect_data;
-            $targetSceneId = $data['target_scene_id'] ?? null;
-
-            if ($targetSceneId) {
-                return Scene::find($targetSceneId);
-            }
-        }
-
-        // Если нет эффекта смены сцены - берем следующую по порядку
-        return $this->getNextScene();
-    }
-    /**
-     * Получить текущее состояние игры с кэшированием
-     */
-    public function getCurrentState(bool $forceRefresh = false): array
-    {
-        $cacheKey = "game_state_{$this->id}";
-
-        if (!$forceRefresh) {
-            $cached = Cache::get($cacheKey);
-            if ($cached !== null) {
-                return $cached;
-            }
-        }
-
-        $state = $this->buildCurrentState();
-        Cache::put($cacheKey, $state, 300); // 5 минут
-
-        return $state;
-    }
-
-    /**
-     * Построить состояние из истории
-     */
-    private function buildCurrentState(): array
-    {
-        $preset = Preset::where('scenario_id', $this->currentScene->scenario_id)
-            ->where('difficulty', $this->difficulty)
+            ->orderBy('order', 'asc')
             ->first();
 
-        if (!$preset) {
-            return [];
-        }
+        Log::info('getNextScene: результат', [
+            'found' => $nextScene ? 'да' : 'нет',
+            'id' => $nextScene->id ?? null,
+            'title' => $nextScene->title ?? null,
+        ]);
 
-        $settings = $preset->settings;
-        if (is_string($settings)) {
-            $settings = json_decode($settings, true);
-        }
-        if (is_string($settings)) {
-            $settings = json_decode($settings, true);
-        }
-
-        $state = is_array($settings) ? $settings : [];
-
-        $histories = $this->gameHistories()
-            ->with('event.effects')
-            ->orderBy('id')
-            ->get();
-
-        foreach ($histories as $history) {
-            foreach ($history->event->effects as $effect) {
-                $state = $this->applyEffect($state, $effect);
-            }
-        }
-
-        return $state;
+        return $nextScene;
     }
 }

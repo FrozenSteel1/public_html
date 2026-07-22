@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\Game;
 use App\Models\Scenario;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class ScenarioSelector extends Component
@@ -10,10 +12,14 @@ class ScenarioSelector extends Component
     public array $scenarios = [];
     public array $selectedDifficulties = [];
     public string $search = '';
+    public ?int $pendingScenarioId = null;
+    public ?array $activeGame = null;
+    public bool $showModal = false;
 
     public function mount(): void
     {
         $this->loadScenarios();
+        $this->checkActiveGame();
     }
 
     /**
@@ -46,16 +52,93 @@ class ScenarioSelector extends Component
     }
 
     /**
-     * Начать игру
+     * Проверить активную игру пользователя
      */
-    public function startGame(int $scenarioId): void
+    public function checkActiveGame(): void
+    {
+        $game = Game::where('user_id', Auth::id())
+            ->where('status', 'in_progress')
+            ->with('currentScene')
+            ->first();
+
+        if ($game) {
+            $scenario = Scenario::whereHas('scenes', function ($query) use ($game) {
+                $query->where('id', $game->current_scene_id);
+            })->first();
+
+            $this->activeGame = [
+                'id' => $game->id,
+                'scenario_name' => $scenario->name ?? 'Неизвестный сценарий',
+                'current_scene_title' => $game->currentScene->title ?? 'Продолжить',
+                'created_at' => $game->created_at->format('d.m.Y H:i'),
+                'difficulty' => $game->difficulty,
+                'steps' => $game->gameHistories()->count(),
+            ];
+        } else {
+            $this->activeGame = null;
+        }
+    }
+
+    /**
+     * Попытка начать игру
+     */
+    public function tryStartGame(int $scenarioId): void
+    {
+        // Если есть активная игра - показываем модальное окно
+        if ($this->activeGame) {
+            $this->pendingScenarioId = $scenarioId;
+            $this->showModal = true;
+        } else {
+            // Если нет активной игры - сразу стартуем
+            $this->startNewGame($scenarioId);
+        }
+    }
+
+    /**
+     * Начать новую игру (завершить старую)
+     */
+    public function startNewGame(int $scenarioId): void
     {
         $difficulty = $this->selectedDifficulties[$scenarioId] ?? 'easy';
+
+        // Завершаем активную игру если есть
+        if ($this->activeGame) {
+            Game::where('user_id', Auth::id())
+                ->where('status', 'in_progress')
+                ->update(['status' => 'completed']);
+            $this->activeGame = null;
+        }
+
+        $this->showModal = false;
+        $this->pendingScenarioId = null;
 
         redirect()->route('game.play', [
             'scenarioId' => $scenarioId,
             'difficulty' => $difficulty,
         ]);
+    }
+
+    /**
+     * Продолжить активную игру
+     */
+    public function continueActiveGame(): void
+    {
+        if ($this->activeGame) {
+            $this->showModal = false;
+            $this->pendingScenarioId = null;
+            redirect()->route('game.continue', [
+                'gameId' => $this->activeGame['id'],
+            ]);
+        }
+    }
+
+    /**
+     * Закрыть модальное окно
+     */
+    public function closeModal(): void
+    {
+        $this->showModal = false;
+        $this->pendingScenarioId = null;
     }
 
     /**

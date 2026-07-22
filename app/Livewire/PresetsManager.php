@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Preset;
 use App\Models\Scenario;
+use App\Models\ParameterDefinition;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,11 +20,26 @@ class PresetsManager extends Component
     public $showForm = false;
     public $search = '';
 
+    // Список параметров для автоподстановки
+    public $parameterNames = [];
+
     protected $rules = [
         'scenario_id' => 'required|exists:scenarios,id',
         'difficulty' => 'required|in:easy,medium,hard,expert,custom',
         'settings' => 'required|array|min:1',
     ];
+
+    public function mount()
+    {
+        $this->loadParameterNames();
+    }
+
+    public function loadParameterNames()
+    {
+        $this->parameterNames = ParameterDefinition::orderBy('name')
+            ->pluck('name')
+            ->toArray();
+    }
 
     public function render()
     {
@@ -59,17 +75,28 @@ class PresetsManager extends Component
         $this->scenario_id = $preset->scenario_id;
         $this->difficulty = $preset->difficulty;
 
-        // Преобразование JSON настроек в массив для формы
-        $this->settings = is_array($preset->settings) ?
-            $preset->settings :
-            json_decode($preset->settings, true) ?? [];
+        // Получаем настройки
+        $settings = $preset->settings;
+
+        // Если это строка - декодируем
+        if (is_string($settings)) {
+            $settings = json_decode($settings, true);
+        }
+
+        // Если после декодирования всё ещё строка (двойное экранирование)
+        if (is_string($settings)) {
+            $settings = json_decode($settings, true);
+        }
+
+        // Если получили массив - используем его
+        $this->settings = is_array($settings) ? $settings : [];
 
         $this->showForm = true;
     }
 
-    public function addSetting()
+    public function addSetting($key = '')
     {
-        $this->settings[] = ['key' => '', 'value' => ''];
+        $this->settings[] = ['key' => $key, 'value' => ''];
     }
 
     public function removeSetting($index)
@@ -82,15 +109,14 @@ class PresetsManager extends Component
     {
         $rules = $this->rules;
 
-        // Проверка уникальности при создании
         if (!$this->editingId) {
             $rules['scenario_id'] .= '|unique:presets,scenario_id,NULL,id,difficulty,' . $this->difficulty;
         }
 
         $this->validate($rules);
 
-        // Преобразование массива настроек в JSON
-        $settingsData = json_encode($this->settings);
+        // Преобразование массива настроек в JSON с сохранением русских букв
+        $settingsData = json_encode($this->settings, JSON_UNESCAPED_UNICODE);
 
         if ($this->editingId) {
             $preset = Preset::findOrFail($this->editingId);

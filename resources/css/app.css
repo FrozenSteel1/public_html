@@ -5,6 +5,7 @@
 [x-cloak] {
     display: none;
 }
+
 /* Для обрезки длинного текста */
 .line-clamp-3 {
     display: -webkit-box;
@@ -16,6 +17,9 @@
 /* Скролл для истории */
 .max-h-48 {
     max-height: 12rem;
+}
+.max-h-64 {
+    max-height: 16rem;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -30,4 +34,266 @@
 .overflow-y-auto::-webkit-scrollbar-thumb {
     background: #d1d5db;
     border-radius: 4px;
+}
+
+/* Тултип для акторов */
+.actor-tooltip-trigger {
+    position: relative;
+    cursor: help;
+}
+
+.actor-tooltip-trigger .actor-tooltip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    padding: 12px;
+    background-color: #1f2937;
+    color: #f3f4f6;
+    font-size: 12px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.actor-tooltip-trigger:hover .actor-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.actor-tooltip .tooltip-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #e5e7eb;
+}
+
+.actor-tooltip .tooltip-description {
+    color: #9ca3af;
+    line-height: 1.4;
+}
+
+.actor-tooltip .tooltip-settings {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #374151;
+}
+
+.actor-tooltip .tooltip-setting {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    background-color: #374151;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+
+/* Модальное окно */
+.fixed {
+    position: fixed;
+}
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+.z-50 {
+    z-index: 9999;
+}
+.bg-black\/50 {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+.flex {
+    display: flex;
+}
+.items-center {
+    align-items: center;
+}
+.justify-center {
+    justify-content: center;
+}
+.max-w-md {
+    max-width: 28rem;
+}
+.w-full {
+    width: 100%;
+}
+.mx-4 {
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+.p-6 {
+    padding: 1.5rem;
+}
+.bg-white {
+    background-color: #ffffff;
+}
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+.shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+.text-center {
+    text-align: center;
+}
+.text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+.text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+}
+.font-semibold {
+    font-weight: 600;
+}
+.text-gray-800 {
+    color: #1f2937;
+}
+.text-gray-600 {
+    color: #4b5563;
+}
+.text-white {
+    color: #ffffff;
+}
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+.mb-4 {
+    margin-bottom: 1rem;
+}
+.mb-6 {
+    margin-bottom: 1.5rem;
+}
+.w-16 {
+    width: 4rem;
+}
+.h-16 {
+    height: 4rem;
+}
+.rounded-full {
+    border-radius: 9999px;
+}
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+.bg-yellow-100 {
+    background-color: #fef9c3;
+}
+.bg-red-100 {
+    background-color: #fee2e2;
+}
+.bg-green-100 {
+    background-color: #dcfce7;
+}
+.bg-blue-100 {
+    background-color: #dbeafe;
+}
+.px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+.bg-blue-500 {
+    background-color: #3b82f6;
+}
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+.hover\:bg-blue-600:hover {
+    background-color: #2563eb;
+}
+.transition {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+.cursor-pointer {
+    cursor: pointer;
+}
+.border-none {
+    border: none;
+}
+/* Тултип для акторов */
+.actor-tooltip-trigger {
+    position: relative;
+    cursor: help;
+}
+
+.actor-tooltip-trigger .actor-tooltip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    padding: 12px;
+    background-color: rgba(31, 41, 55, 0.92);
+    color: #f3f4f6;
+    font-size: 12px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none; /* Позволяет кликать сквозь тултип */
+    backdrop-filter: blur(4px); /* Размытие фона */
+}
+
+.actor-tooltip-trigger:hover .actor-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.5s; /* Задержка 0.5 секунды перед показом */
+}
+
+/* При наведении на сам тултип он не исчезает */
+.actor-tooltip-trigger .actor-tooltip:hover {
+    opacity: 1;
+    visibility: visible;
+}
+
+.actor-tooltip .tooltip-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #e5e7eb;
+}
+
+.actor-tooltip .tooltip-description {
+    color: #d1d5db;
+    line-height: 1.4;
+}
+
+.actor-tooltip .tooltip-settings {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(55, 65, 81, 0.6);
+}
+
+.actor-tooltip .tooltip-setting {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    background-color: rgba(55, 65, 81, 0.6);
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.animate-pulse {
+    animation: pulse 0.8s ease-in-out infinite;
 }

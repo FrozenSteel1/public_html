@@ -53,21 +53,38 @@
                             <div class="mb-4">
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="block text-gray-700 text-sm font-bold">Настройки предустановки</label>
-                                    <button wire:click="addSetting" type="button"
-                                            class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                        Добавить настройку
-                                    </button>
+                                    <div class="flex gap-1 flex-wrap">
+                                        @foreach($parameterNames as $paramName)
+                                            <button wire:click="addSetting('{{ $paramName }}')" type="button"
+                                                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs">
+                                                + {{ $paramName }}
+                                            </button>
+                                        @endforeach
+                                        <button wire:click="addSetting" type="button"
+                                                class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
+                                            + Свой параметр
+                                        </button>
+                                    </div>
                                 </div>
 
                                 @foreach($settings as $index => $setting)
                                     <div class="grid grid-cols-2 gap-4 mb-2">
-                                        <input wire:model="settings.{{ $index }}.key" type="text"
-                                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
-                                               placeholder="Ключ">
+                                        <div>
+                                            <input wire:model="settings.{{ $index }}.key" type="text"
+                                                   list="parameter-keys-list"
+                                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
+                                                   placeholder="Выберите или впишите параметр"
+                                                   autocomplete="off">
+                                            <datalist id="parameter-keys-list">
+                                                @foreach($parameterNames as $paramName)
+                                                    <option value="{{ $paramName }}">
+                                                @endforeach
+                                            </datalist>
+                                        </div>
                                         <div class="flex gap-2">
                                             <input wire:model="settings.{{ $index }}.value" type="text"
                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
-                                                   placeholder="Значение">
+                                                   placeholder="Значение (0-100)">
                                             <button wire:click="removeSetting({{ $index }})" type="button"
                                                     class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">
                                                 X
@@ -133,9 +150,22 @@
                                         </span>
                                 </td>
                                 <td class="py-3 px-6 text-center">
-                                        <span class="bg-blue-200 text-blue-600 py-1 px-3 rounded-full text-xs">
-                                            {{ is_array($preset->settings) ? count($preset->settings) : 0 }}
-                                        </span>
+                                    @php
+                                        $settingsCount = 0;
+                                        if ($preset->settings) {
+                                            if (is_array($preset->settings)) {
+                                                $settingsCount = count($preset->settings);
+                                            } elseif (is_string($preset->settings)) {
+                                                $decoded = json_decode($preset->settings, true);
+                                                if (is_array($decoded)) {
+                                                    $settingsCount = count($decoded);
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    <span class="bg-blue-200 text-blue-600 py-1 px-3 rounded-full text-xs">
+        {{ $settingsCount }}
+    </span>
                                 </td>
                                 <td class="py-3 px-6 text-center">
                                     <button wire:click="edit({{ $preset->id }})"

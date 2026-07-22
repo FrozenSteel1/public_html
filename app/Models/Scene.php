@@ -31,4 +31,24 @@ class Scene extends Model
     {
         return $this->hasMany(Choice::class)->orderBy('order');
     }
+    /**
+     * Получить акторов, участвующих в сцене
+     * (из additional_data или через связи)
+     */
+    public function getActors(): array
+    {
+        // Если в additional_data есть список акторов
+        $data = $this->additional_data;
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+
+        // Проверяем, есть ли в additional_data поле 'actors'
+        if (is_array($data) && isset($data['actors'])) {
+            return $data['actors'];
+        }
+
+        // Если нет - возвращаем всех акторов или пустой массив
+        return [];
+    }
 }

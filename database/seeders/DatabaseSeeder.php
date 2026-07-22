@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             EffectTypesSeeder::class,
             CompaniesSeeder::class,
+            MessageEffectTypesSeeder::class,
+            ParameterDefinitionsSeeder::class,
 
         ]);
         // Создаём пользователя только если его нет
