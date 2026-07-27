@@ -572,11 +572,15 @@ class GamePlay extends Component
         $this->loadHistoryWithMonths();
         $this->loadSceneActors();
 
+        // ========== ПРОВЕРКА ОТЛОЖЕННЫХ СООБЩЕНИЙ ==========
+        $this->checkDelayedMessages();
+
         Log::info('applyGameResult: данные обновлены', [
             'new_scene_id' => $this->scene->id ?? null,
             'new_scene_title' => $this->scene->title ?? null,
             'available_choices_count' => count($this->availableChoices),
             'history_count' => count($this->gameHistoryWithMonths),
+            'has_delayed_messages' => $this->hasDelayedMessages,
         ]);
 
         $this->renderKey++;

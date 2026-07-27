@@ -30,6 +30,8 @@ class GameService
      */
     public function startGame(int $userId, int $scenarioId, string $difficulty): Game
     {
+        session()->forget('delayed_game_messages');
+        session()->forget('game_messages');
         $preset = Preset::where('scenario_id', $scenarioId)
             ->where('difficulty', $difficulty)
             ->first();
@@ -200,40 +202,12 @@ class GameService
         }
         return $state;
     }
-
     private function applyEffect(Game $game, array $state, $effect): array
     {
-        // ========== РУЧНАЯ ОБРАБОТКА СООБЩЕНИЙ ==========
-        $data = $effect->effect_data;
-Log::alert('2222222222222222222222222222222222222222',$data);
-//        if (is_string($data)) {
-//            $data = json_decode($data, true);
-//        }
-//        if (is_string($data)) {
-//            $data = json_decode($data, true);
-//        }
-        Log::alert('======================',[is_array($data),isset($data['message']),$effect->effect_type_id==12]);
-        if (is_array($data) && isset($data['message']) && $effect->effect_type_id==12) {
-            $messages = session()->get('game_messages', []);
 
-            $messages[] = [
-                'text' => $data['message'],
-                'type' => $data['type'] ?? 'info',
-                'timestamp' => now()->toDateTimeString(),
-            ];
-
-            session()->put('game_messages', $messages);
-            Log::info('Сообщение сохранено (ручная обработка)', ['message' => $data['message']]);
-            return $state;
-        }
-
-        // ========== ОСТАЛЬНЫЕ ЭФФЕКТЫ ==========
         return $this->effectManager->handle($game, $effect, $state);
     }
 
-    /**
-     * Обработать триггеры акторов
-     */
     /**
      * Обработать триггеры акторов
      */
