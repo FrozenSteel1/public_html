@@ -64,9 +64,19 @@
                                             </button>
                                         @endforeach
                                         <!-- Кнопка добавления пустого эффекта -->
-                                        <button wire:click="addEffect" type="button"
+                                        <button wire:click="addEffect('default')" type="button"
                                                 style="background-color: #10b981; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
                                             + Свой ключ
+                                        </button>
+                                        <!-- Кнопка добавления сообщения (тип 12) -->
+                                        <button wire:click="addEffect('message')" type="button"
+                                                style="background-color: #f59e0b; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                            💬 Сообщение
+                                        </button>
+                                        <!-- Кнопка добавления отложенного сообщения (тип 13) -->
+                                        <button wire:click="addEffect('delayed')" type="button"
+                                                style="background-color: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; white-space: nowrap;">
+                                            ⏳ Отложенное
                                         </button>
                                     </div>
                                 </div>
@@ -77,8 +87,18 @@
                                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                                 <span style="font-weight: 600; font-size: 14px; color: #4b5563;">
                                                     Эффект #{{ $index + 1 }}
+                                                    @php
+                                                        $effectTypeId = (int) ($effect['effect_type_id'] ?? 0);
+                                                        $label = $this->getEffectTypeLabel($effectTypeId);
+                                                    @endphp
+                                                    @if($effectTypeId > 0)
+                                                        - <span style="color: #7c3aed;">{{ $label }}</span>
+                                                    @endif
                                                     @if(!empty($effect['key']))
-                                                        - <span style="color: #7c3aed;">{{ $effect['key'] }}</span>
+                                                        - <span style="color: #2563eb;">{{ $effect['key'] }}</span>
+                                                    @endif
+                                                    @if(!empty($effect['message']))
+                                                        - <span style="color: #2563eb;">{{ \Illuminate\Support\Str::limit($effect['message'], 30) }}</span>
                                                     @endif
                                                 </span>
                                                 <button wire:click="removeEffect({{ $index }})" type="button"
@@ -92,7 +112,7 @@
                                                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
                                                     Тип эффекта *
                                                 </label>
-                                                <select wire:model="effects.{{ $index }}.effect_type_id"
+                                                <select wire:model.live="effects.{{ $index }}.effect_type_id"
                                                         style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; background-color: white;">
                                                     <option value="">Выберите тип эффекта</option>
                                                     @foreach($effectTypes as $type)
@@ -104,48 +124,93 @@
                                                 @enderror
                                             </div>
 
-                                            <!-- Ключ и Значение вместо JSON -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                                <!-- Ключ с автоподстановкой -->
-                                                <div>
+                                            <!-- Динамические поля в зависимости от типа эффекта -->
+                                            @php
+                                                $effectTypeId = (int) ($effect['effect_type_id'] ?? 0);
+                                            @endphp
+
+                                            @if($effectTypeId == 12 || $effectTypeId == 13)
+                                                <!-- Сообщение / Отложенное сообщение -->
+                                                <div style="margin-bottom: 10px;">
                                                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
-                                                        Ключ
+                                                        Текст сообщения *
                                                     </label>
-                                                    <input wire:model="effects.{{ $index }}.key"
-                                                           type="text"
-                                                           list="effect-keys-list"
-                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
-                                                           placeholder="Выберите или впишите ключ"
-                                                           autocomplete="off">
-                                                    <datalist id="effect-keys-list">
-                                                        @foreach($effectKeys as $effectKey)
-                                                            <option value="{{ $effectKey }}">
-                                                        @endforeach
-                                                    </datalist>
+                                                    <textarea wire:model="effects.{{ $index }}.message"
+                                                              rows="2"
+                                                              style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                              placeholder="Введите текст сообщения"></textarea>
                                                 </div>
 
-                                                <!-- Значение -->
+                                                @if($effectTypeId == 13)
+                                                    <!-- Задержка (только для отложенных) -->
+                                                    <div style="margin-bottom: 10px;">
+                                                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                            Задержка (количество ходов) *
+                                                        </label>
+                                                        <input wire:model="effects.{{ $index }}.delay" type="number" min="1" max="10"
+                                                               style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                               placeholder="Например: 2">
+                                                    </div>
+                                                @endif
+
+                                                <!-- Тип сообщения -->
                                                 <div>
                                                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
-                                                        Значение
+                                                        Тип сообщения
                                                     </label>
-                                                    <input wire:model="effects.{{ $index }}.value" type="text"
-                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
-                                                           placeholder="Значение">
+                                                    <select wire:model="effects.{{ $index }}.type"
+                                                            style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; background-color: white;">
+                                                        <option value="info">ℹ️ Информация</option>
+                                                        <option value="warning">⚠️ Предупреждение</option>
+                                                        <option value="success">✅ Успех</option>
+                                                        <option value="error">❌ Ошибка</option>
+                                                    </select>
                                                 </div>
-                                            </div>
+
+                                            @else
+                                                <!-- Обычные эффекты: Ключ + Значение -->
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                    <div>
+                                                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                            Ключ
+                                                        </label>
+                                                        <input wire:model="effects.{{ $index }}.key" type="text" list="effect-keys-list"
+                                                               style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                               placeholder="Выберите или впишите ключ"
+                                                               autocomplete="off">
+                                                        <datalist id="effect-keys-list">
+                                                            @foreach($effectKeys as $effectKey)
+                                                                <option value="{{ $effectKey }}">
+                                                            @endforeach
+                                                        </datalist>
+                                                    </div>
+                                                    <div>
+                                                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4b5563;">
+                                                            Значение
+                                                        </label>
+                                                        <input wire:model="effects.{{ $index }}.value" type="text"
+                                                               style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
+                                                               placeholder="Например: +1 или -5">
+                                                    </div>
+                                                </div>
+                                            @endif
 
                                             <!-- Превью данных -->
-                                            @if(!empty($effect['key']) || !empty($effect['value']))
+                                            @php
+                                                $preview = '';
+                                                if ($effectTypeId == 12 && !empty($effect['message'])) {
+                                                    $preview = 'message: ' . $effect['message'];
+                                                    if (!empty($effect['type'])) { $preview .= ', type: ' . $effect['type']; }
+                                                } elseif ($effectTypeId == 13 && !empty($effect['message'])) {
+                                                    $preview = 'message: ' . $effect['message'] . ', delay: ' . ($effect['delay'] ?? 2);
+                                                    if (!empty($effect['type'])) { $preview .= ', type: ' . $effect['type']; }
+                                                } elseif (!empty($effect['key']) || !empty($effect['value'])) {
+                                                    $preview = ($effect['key'] ?? '') . ': ' . ($effect['value'] ?? '');
+                                                }
+                                            @endphp
+                                            @if(!empty($preview))
                                                 <div style="margin-top: 8px; padding: 6px 10px; background-color: #f3e8ff; border-radius: 4px; font-size: 12px; color: #6b21a8;">
-                                                    <strong>Данные эффекта:</strong>
-                                                    @if(!empty($effect['key']) && !empty($effect['value']))
-                                                        {{ $effect['key'] }}: {{ $effect['value'] }}
-                                                    @elseif(!empty($effect['key']))
-                                                        {{ $effect['key'] }}
-                                                    @elseif(!empty($effect['value']))
-                                                        {{ $effect['value'] }}
-                                                    @endif
+                                                    <strong>Данные эффекта:</strong> {{ $preview }}
                                                 </div>
                                             @endif
                                         </div>

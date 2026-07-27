@@ -15,7 +15,7 @@ class EventsManager extends Component
     public $description = '';
     public $editingId = null;
 
-    // Для эффектов: теперь каждый эффект имеет ключ и значение вместо JSON
+    // Для эффектов: теперь каждый эффект имеет поля в зависимости от типа
     public $effects = [];
 
     public $showForm = false;
@@ -36,8 +36,6 @@ class EventsManager extends Component
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
         'effects.*.effect_type_id' => 'required|exists:effect_types,id',
-        'effects.*.key' => 'nullable|string',
-        'effects.*.value' => 'nullable|string',
     ];
 
     public function render()
@@ -71,50 +69,84 @@ class EventsManager extends Component
         $this->name = $event->name;
         $this->description = $event->description;
 
-        // Преобразование эффектов: извлекаем key и value из effect_data
         $this->effects = $event->effects->map(function($effect) {
             $effectData = $this->jsonToArray($effect->effect_data);
+            $effectTypeId = (int) $effect->effect_type_id;
 
-            // Если effect_data содержит простые пары ключ-значение
-            $key = '';
-            $value = '';
+            $result = [
+                'id' => $effect->id,
+                'effect_type_id' => $effectTypeId,
+                'key' => '',
+                'value' => '',
+                'message' => '',
+                'delay' => 2,
+                'type' => 'info',
+            ];
 
-            if (is_array($effectData)) {
-                if (isset($effectData['key'])) {
-                    $key = $effectData['key'];
-                    $value = $effectData['value'] ?? '';
-                } elseif (count($effectData) > 0) {
-                    // Если это массив с одним элементом
-                    $firstKey = array_key_first($effectData);
-                    if (is_string($firstKey)) {
-                        $key = $firstKey;
-                        $value = $effectData[$firstKey];
-                    }
-                }
+            // В зависимости от типа заполняем нужные поля
+            switch ($effectTypeId) {
+                case 12: // Сообщение
+                    $result['message'] = $effectData['message'] ?? '';
+                    $result['type'] = $effectData['type'] ?? 'info';
+                    break;
+                case 13: // Отложенное сообщение
+                    $result['message'] = $effectData['message'] ?? '';
+                    $result['delay'] = $effectData['delay'] ?? 2;
+                    $result['type'] = $effectData['type'] ?? 'info';
+                    break;
+                default:
+                    $result['key'] = $effectData['key'] ?? '';
+                    $result['value'] = $effectData['value'] ?? '';
+                    break;
             }
 
-            return [
-                'id' => $effect->id,
-                'effect_type_id' => $effect->effect_type_id,
-                'key' => $key,
-                'value' => $value,
-            ];
+            return $result;
         })->toArray();
 
         $this->showForm = true;
     }
 
     /**
-     * Добавление эффекта с возможностью указать ключ
+     * Добавление эффекта
      */
-    public function addEffect($key = '')
+    /**
+     * Добавление эффекта
+     */
+    /**
+     * Добавление эффекта
+     */
+    public function addEffect($presetType = 'default')
     {
-        $this->effects[] = [
+        $effect = [
             'id' => null,
             'effect_type_id' => '',
-            'key' => $key,
+            'key' => '',
             'value' => '',
+            'message' => '',
+            'delay' => 2,
+            'type' => 'info',
+            'preset_type' => $presetType,
         ];
+
+        // Автоматически подставляем тип эффекта в зависимости от presetType
+        switch ($presetType) {
+            case 'message':
+                $effect['effect_type_id'] = 12; // Сообщение
+                break;
+            case 'delayed':
+                $effect['effect_type_id'] = 13; // Отложенное сообщение
+                break;
+            case 'default':
+                // Оставляем пустым, пользователь выберет сам
+                break;
+            default:
+                // Если передан ключ (например, "Институциональная устойчивость")
+                // оставляем effect_type_id пустым, но заполняем key
+                $effect['key'] = $presetType;
+                break;
+        }
+
+        $this->effects[] = $effect;
     }
 
     public function removeEffect($index)
@@ -122,6 +154,25 @@ class EventsManager extends Component
         if (isset($this->effects[$index])) {
             unset($this->effects[$index]);
             $this->effects = array_values($this->effects);
+        }
+    }
+
+    /**
+     * Обновление полей при изменении типа эффекта
+     */
+    public function updatedEffects($value, $key)
+    {
+        // Если изменился effect_type_id у какого-то эффекта
+        if (str_ends_with($key, '.effect_type_id')) {
+            $index = explode('.', $key)[0];
+            $effectTypeId = (int) $value;
+
+            // Сбрасываем все поля
+            $this->effects[$index]['key'] = '';
+            $this->effects[$index]['value'] = '';
+            $this->effects[$index]['message'] = '';
+            $this->effects[$index]['delay'] = 2;
+            $this->effects[$index]['type'] = 'info';
         }
     }
 
@@ -144,8 +195,12 @@ class EventsManager extends Component
             $updatedEffectIds = [];
 
             foreach ($this->effects as $effect) {
-                // Формируем effect_data как простой JSON с ключом и значением
-                $effectData = $this->buildEffectData($effect['key'] ?? '', $effect['value'] ?? '');
+                if (empty($effect['effect_type_id'])) {
+                    continue;
+                }
+
+                // Формируем effect_data в зависимости от типа
+                $effectData = $this->buildEffectData($effect);
 
                 $effectDataArray = [
                     'effect_type_id' => $effect['effect_type_id'],
@@ -179,7 +234,7 @@ class EventsManager extends Component
 
             foreach ($this->effects as $effect) {
                 if (!empty($effect['effect_type_id'])) {
-                    $effectData = $this->buildEffectData($effect['key'] ?? '', $effect['value'] ?? '');
+                    $effectData = $this->buildEffectData($effect);
 
                     $event->effects()->create([
                         'effect_type_id' => $effect['effect_type_id'],
@@ -217,36 +272,46 @@ class EventsManager extends Component
     }
 
     /**
-     * Построение effect_data из ключа и значения
+     * Построение effect_data в зависимости от типа эффекта
      */
-    private function buildEffectData($key, $value): string
+    private function buildEffectData($effect): string
     {
+        $effectTypeId = (int) ($effect['effect_type_id'] ?? 0);
         $data = [];
 
-        if (!empty($key)) {
-            $data['key'] = $key;
+        switch ($effectTypeId) {
+            case 12: // Сообщение
+                if (!empty($effect['message'])) {
+                    $data['message'] = $effect['message'];
+                }
+                if (!empty($effect['type'])) {
+                    $data['type'] = $effect['type'];
+                }
+                break;
+
+            case 13: // Отложенное сообщение
+                if (!empty($effect['message'])) {
+                    $data['message'] = $effect['message'];
+                }
+                if (!empty($effect['delay'])) {
+                    $data['delay'] = (int) $effect['delay'];
+                }
+                if (!empty($effect['type'])) {
+                    $data['type'] = $effect['type'];
+                }
+                break;
+
+            default: // Обычные эффекты (повышение/снижение показателей)
+                if (!empty($effect['key'])) {
+                    $data['key'] = $effect['key'];
+                }
+                if (!empty($effect['value'])) {
+                    $data['value'] = $effect['value'];
+                }
+                break;
         }
 
-        if (!empty($value)) {
-            $data['value'] = $value;
-        }
-
-        // Если есть и ключ и значение, сохраняем как пару
-        if (!empty($key) && isset($value)) {
-            return json_encode($data, JSON_UNESCAPED_UNICODE);
-        }
-
-        // Если только значение, сохраняем как есть
-        if (empty($key) && !empty($value)) {
-            return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE);
-        }
-
-        // Если только ключ
-        if (!empty($key) && empty($value)) {
-            return json_encode(['key' => $key], JSON_UNESCAPED_UNICODE);
-        }
-
-        return json_encode([], JSON_UNESCAPED_UNICODE);
+        return json_encode($data, JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -264,5 +329,25 @@ class EventsManager extends Component
         }
 
         return [];
+    }
+
+    /**
+     * Проверить, является ли тип эффекта "сообщением"
+     */
+    public function isMessageType($effectTypeId): bool
+    {
+        return in_array((int) $effectTypeId, [12, 13]);
+    }
+
+    /**
+     * Получить название типа для отображения
+     */
+    public function getEffectTypeLabel($effectTypeId): string
+    {
+        $types = [
+            12 => 'Сообщение',
+            13 => 'Отложенное сообщение',
+        ];
+        return $types[(int) $effectTypeId] ?? 'Обычный';
     }
 }
