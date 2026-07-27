@@ -12,41 +12,50 @@ use App\Livewire\PresetsManager;
 use App\Livewire\GamesManager;
 use App\Livewire\GamePlay;
 use App\Livewire\ScenarioSelector;
-use App\Livewire\UserGames;
 use App\Livewire\GameResults;
+use App\Livewire\PlayerDashboard;
+use App\Livewire\AdminDashboard;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
+// ========== МАРШРУТЫ ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ ==========
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
+    // Старый дашборд JetStream - перенаправляем на дашборд игрока
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return redirect()->route('player.dashboard');
     })->name('dashboard');
 });
 
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+// ========== АДМИН-ПАНЕЛЬ (ТОЛЬКО ДЛЯ АДМИНОВ) ==========
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', AdminDashboard::class)->name('dashboard');
     Route::get('/companies', CompaniesManager::class)->name('companies');
     Route::get('/scenarios', ScenariosManager::class)->name('scenarios');
     Route::get('/scenes', ScenesManager::class)->name('scenes');
     Route::get('/events', EventsManager::class)->name('events');
     Route::get('/effect-types', EffectTypesManager::class)->name('effect-types');
-    Route::get('/actors', ActorsManager::class)->name('actors');
+    Route::get('/actors', ActOrsManager::class)->name('actors');
     Route::get('/company-scenarios', CompanyScenarioManager::class)->name('company-scenarios');
     Route::get('/presets', PresetsManager::class)->name('presets');
     Route::get('/games', GamesManager::class)->name('games');
 });
 
+// ========== ИГРОВЫЕ МАРШРУТЫ (ДЛЯ ВСЕХ АВТОРИЗОВАННЫХ) ==========
 Route::middleware(['auth'])->group(function () {
+    // Дашборд игрока (главная страница после входа)
+    Route::get('/dashboard', PlayerDashboard::class)->name('player.dashboard');
+
     // Страница выбора сценария
     Route::get('/scenarios', ScenarioSelector::class)->name('scenarios');
 
-    // Страница со списком игр
-    Route::get('/my-games', UserGames::class)->name('user.games');
+    // Страница со списком игр (дублирует дашборд, оставляем для обратной совместимости)
+    Route::get('/my-games', PlayerDashboard::class)->name('user.games');
 
     // Результаты игры
     Route::get('/game/results/{gameId}', GameResults::class)

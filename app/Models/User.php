@@ -15,6 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string $role
  * @property \Illuminate\Support\Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -43,6 +44,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereProfilePhotoPath($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRole($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTwoFactorConfirmedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTwoFactorRecoveryCodes($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTwoFactorSecret($value)
@@ -60,6 +62,10 @@ class User extends Authenticatable
     use Notifiable;
     use TwoFactorAuthenticatable;
 
+    // ========== КОНСТАНТЫ РОЛЕЙ ==========
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_PLAYER = 'player';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -69,6 +75,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -102,6 +109,74 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => 'string',
         ];
+    }
+
+    // ========== МЕТОДЫ ДЛЯ ПРОВЕРКИ РОЛЕЙ ==========
+
+    /**
+     * Проверить, является ли пользователь администратором
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    /**
+     * Проверить, является ли пользователь игроком
+     */
+    public function isPlayer(): bool
+    {
+        return $this->role === self::ROLE_PLAYER;
+    }
+
+    /**
+     * Проверить, имеет ли пользователь указанную роль
+     */
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    /**
+     * Получить список всех ролей
+     *
+     * @return array<string>
+     */
+    public static function getRoles(): array
+    {
+        return [
+            self::ROLE_ADMIN,
+            self::ROLE_PLAYER,
+        ];
+    }
+
+    /**
+     * Получить читаемое название роли
+     */
+    public function getRoleLabel(): string
+    {
+        return match($this->role) {
+            self::ROLE_ADMIN => 'Администратор',
+            self::ROLE_PLAYER => 'Игрок',
+            default => 'Неизвестно',
+        };
+    }
+
+    /**
+     * Scope для фильтрации администраторов
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->where('role', self::ROLE_ADMIN);
+    }
+
+    /**
+     * Scope для фильтрации игроков
+     */
+    public function scopePlayers($query)
+    {
+        return $query->where('role', self::ROLE_PLAYER);
     }
 }
