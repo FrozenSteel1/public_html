@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Models\GameHistory;
 
 class GamePlay extends Component
 {
@@ -56,15 +57,21 @@ class GamePlay extends Component
         $this->effectManager = new EffectManager();
     }
 
-    public function mount(?int $scenarioId = null, ?int $gameId = null, string $difficulty = 'easy'): void
+    public function mount(...$parameters): void
     {
-        if ($gameId) {
-            $this->continueGame($gameId);
-        } elseif ($scenarioId) {
-            $this->startNewGame($scenarioId, $difficulty);
-        } else {
-            throw new \Exception("Не указан сценарий или ID игры");
+        $params = request()->route()->parameters();
+
+        if (isset($params['gameId'])) {
+            $this->continueGame((int) $params['gameId']);
+            return;
         }
+
+        if (isset($params['scenarioId'])) {
+            $this->startNewGame((int) $params['scenarioId'], $params['difficulty'] ?? 'easy');
+            return;
+        }
+
+        throw new \Exception("Не указан сценарий или ID игры");
     }
 
     #[On('time-expired')]
@@ -201,10 +208,19 @@ class GamePlay extends Component
             ->limit(10)
             ->get()
             ->map(function ($history) {
+                $sourceLabel = match($history->source) {
+                    GameHistory::SOURCE_PLAYER => '👤 Игрок',
+                    GameHistory::SOURCE_ACTOR => '🎭 Актор',
+                    GameHistory::SOURCE_SYSTEM => '⚙️ Система',
+                    default => '',
+                };
+
                 return [
                     'event_name' => $history->event->name ?? 'Unknown Event',
                     'event_description' => $history->event->description ?? '',
                     'created_at' => $history->created_at->format('H:i:s'),
+                    'source' => $history->source,
+                    'source_label' => $sourceLabel,
                 ];
             })
             ->toArray();
@@ -230,9 +246,14 @@ class GamePlay extends Component
 
         foreach ($histories as $history) {
             $eventName = $history->event->name ?? '';
-            $isPlayerMove = $this->isPlayerEvent($eventName);
+
+            // ========== ОПРЕДЕЛЯЕМ ПО source, А НЕ ПО НАЗВАНИЮ! ==========
+            $isPlayerMove = $history->source === GameHistory::SOURCE_PLAYER;
+            $isActorEvent = $history->source === GameHistory::SOURCE_ACTOR;
+            $isSystemEvent = $history->source === GameHistory::SOURCE_SYSTEM;
 
             if ($isPlayerMove) {
+                // Игровой ход
                 $playerMoveCount++;
                 $monthIndex = (($playerMoveCount - 1) % 12) + 1;
                 $currentMonth = $this->monthNames[$monthIndex] ?? 'Месяц ' . $monthIndex;
@@ -247,13 +268,16 @@ class GamePlay extends Component
                     'created_at' => $history->created_at->format('H:i:s'),
                     'actor_type' => null,
                     'actor_name' => null,
+                    'source' => $history->source,
                 ];
 
-            } else {
+            } elseif ($isActorEvent) {
+                // Реакция актора
                 $actionType = $this->extractActorAction($eventName);
                 $actorName = $this->extractActorName($eventName);
                 $eventKey = $eventName;
 
+                // Избегаем дублирования одинаковых реакций в одном шаге
                 if (!isset($processedEvents[$eventKey])) {
                     $processedEvents[$eventKey] = true;
 
@@ -266,9 +290,11 @@ class GamePlay extends Component
                         'created_at' => $history->created_at->format('H:i:s'),
                         'actor_type' => $actionType,
                         'actor_name' => $actorName,
+                        'source' => $history->source,
                     ];
                 }
             }
+            // Системные события (source === system) пропускаем
         }
 
         $this->gameHistoryWithMonths = $result;
@@ -366,7 +392,15 @@ class GamePlay extends Component
 
         return $effects;
     }
+    private function finishGame(): void
+    {
+        $this->isFinished = true;
+        $this->renderKey++;
+        session()->flash('message', 'Игра завершена!');
 
+        // Редирект на страницу результатов
+        redirect()->route('game.results', ['gameId' => $this->game->id]);
+    }
     public function selectChoice(int $choiceId): void
     {
         try {
@@ -489,14 +523,11 @@ class GamePlay extends Component
         $this->currentState = $result['new_state'] ?? $this->game->getCurrentState(true);
         $this->availableChoices = $this->gameService->getAvailableChoices($this->game);
 
-        // ========== ПРОВЕРКА: если сцены нет или игра завершена ==========
+        // Если сцены нет или игра завершена
         if ($this->game->isFinished() || !$this->scene) {
-            $this->isFinished = true;
-            $this->renderKey++;
-            session()->flash('message', 'Игра завершена!');
+            $this->finishGame();
             return;
         }
-        // ================================================================
 
         $this->loadHistoryWithMonths();
         $this->loadSceneActors();
@@ -507,13 +538,6 @@ class GamePlay extends Component
             'available_choices_count' => count($this->availableChoices),
             'history_count' => count($this->gameHistoryWithMonths),
         ]);
-
-        if ($this->game->isFinished()) {
-            $this->isFinished = true;
-            session()->flash('message', 'Игра завершена!');
-        } else {
-            session()->flash('message', 'Выбор сделан успешно!');
-        }
 
         $this->renderKey++;
         $this->restartTimer();
@@ -538,20 +562,7 @@ class GamePlay extends Component
         $this->dispatch('$refresh');
     }
 
-    private function isPlayerEvent(string $eventName): bool
-    {
-        $nonPlayerKeywords = ['актор', 'Актор', 'Блокирует', 'Поддерживает', 'Содействует',
-            'Критикует', 'Тормозит', 'Отходит', 'Подает сигнал',
-            'Сила реакции', 'реакции системы', 'Реакции системы',
-            'Блокировать', 'Тормозить', 'Слабая', 'Средняя', 'Сильная', 'Критическая'];
 
-        foreach ($nonPlayerKeywords as $keyword) {
-            if (strpos($eventName, $keyword) !== false) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     public function getParameterValue(string $key): int
     {

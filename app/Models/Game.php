@@ -22,35 +22,26 @@ class Game extends Model
         'status' => 'string',
     ];
 
-    // Связь с таблицей users (принадлежит пользователю)
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    // Связь с таблицей companies (принадлежит компании)
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
 
-    // Связь с таблицей game_histories (одна игра имеет много записей истории)
     public function gameHistories(): HasMany
     {
         return $this->hasMany(GameHistory::class);
     }
 
-    /**
-     * Связь с текущей сценой
-     */
     public function currentScene(): BelongsTo
     {
         return $this->belongsTo(Scene::class, 'current_scene_id');
     }
 
-    /**
-     * Получить текущее состояние игры с кэшированием
-     */
     public function getCurrentState(bool $forceRefresh = false): array
     {
         $cacheKey = "game_state_{$this->id}";
@@ -68,11 +59,12 @@ class Game extends Model
         return $state;
     }
 
-    /**
-     * Построить состояние из истории
-     */
     private function buildCurrentState(): array
     {
+        if (!$this->currentScene) {
+            return [];
+        }
+
         $preset = Preset::where('scenario_id', $this->currentScene->scenario_id)
             ->where('difficulty', $this->difficulty)
             ->first();
@@ -89,7 +81,6 @@ class Game extends Model
             $settings = json_decode($settings, true);
         }
 
-        // Создаём состояние в формате [key => value]
         $state = [];
         if (is_array($settings)) {
             foreach ($settings as $item) {
@@ -99,7 +90,6 @@ class Game extends Model
             }
         }
 
-        // Воспроизводим все события из истории
         $histories = $this->gameHistories()
             ->with('event.effects')
             ->orderBy('id')
@@ -114,19 +104,13 @@ class Game extends Model
         return $state;
     }
 
-    /**
-     * Применить эффект к состоянию
-     */
     private function applyEffect(array $state, Effect $effect): array
     {
-        // Получаем данные эффекта (уже массив благодаря касту)
         $data = $effect->effect_data;
 
-        // Если всё же строка - декодируем
         if (is_string($data)) {
             $data = json_decode($data, true);
         }
-        // Если всё ещё строка (двойное экранирование)
         if (is_string($data)) {
             $data = json_decode($data, true);
         }
@@ -138,7 +122,6 @@ class Game extends Model
             return $state;
         }
 
-        // Парсим значение (например, "+5", "-3", "10")
         $numericValue = (int) filter_var($value, FILTER_SANITIZE_NUMBER_INT);
         $operation = str_starts_with($value, '+') ? '+' :
             (str_starts_with($value, '-') ? '-' : '=');
@@ -159,23 +142,16 @@ class Game extends Model
                 break;
         }
 
-        // Ограничиваем значения диапазоном 0-100
         $state[$key] = max(0, min(100, $state[$key]));
 
         return $state;
     }
 
-    /**
-     * Проверить, завершена ли игра
-     */
     public function isFinished(): bool
     {
         return in_array($this->status, ['completed', 'failed']);
     }
 
-    /**
-     * Получить следующую сцену по порядку
-     */
     public function getNextScene(): ?Scene
     {
         if (!$this->current_scene_id) {

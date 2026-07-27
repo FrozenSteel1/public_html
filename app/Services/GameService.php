@@ -98,6 +98,9 @@ class GameService
     /**
      * Сделать выбор
      */
+    /**
+     * Сделать выбор
+     */
     public function makeChoice(int $gameId, int $choiceId): array
     {
         Log::info('makeChoice начат', ['game_id' => $gameId, 'choice_id' => $choiceId]);
@@ -122,11 +125,12 @@ class GameService
         // Применяем эффекты события выбора
         $newState = $this->applyEventEffects($game, $currentState, $choice->event);
 
-
-        // Записываем в историю
+        // ========== ЗАПИСЫВАЕМ В ИСТОРИЮ - ИГРОВОЙ ХОД ==========
         GameHistory::create([
             'game_id' => $gameId,
             'event_id' => $choice->event_id,
+            'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+            'source' => GameHistory::SOURCE_PLAYER,
         ]);
 
         // Проверяем триггеры акторов
@@ -138,9 +142,12 @@ class GameService
             if ($event) {
                 $currentState = $this->applyEventEffects($game, $currentState, $event);
 
+                // ========== ЗАПИСЫВАЕМ В ИСТОРИЮ - РЕАКЦИЯ АКТОРА ==========
                 GameHistory::create([
                     'game_id' => $gameId,
                     'event_id' => $event->id,
+                    'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+                    'source' => GameHistory::SOURCE_ACTOR,
                 ]);
             }
         }
@@ -217,6 +224,10 @@ class GameService
         // ========== ОСТАЛЬНЫЕ ЭФФЕКТЫ ==========
         return $this->effectManager->handle($game, $effect, $state);
     }
+
+    /**
+     * Обработать триггеры акторов
+     */
     /**
      * Обработать триггеры акторов
      */
@@ -264,10 +275,17 @@ class GameService
                     if ($this->checkTriggerCondition($currentState, $key, $value)) {
                         $event = Event::with('effects.effectType')->find($eventId);
                         if ($event) {
-                            // ИСПРАВЛЕНО: передаём $game
                             $currentState = $this->applyEventEffects($game, $currentState, $event);
 
                             $processedEvents[$eventKey] = true;
+
+                            // ========== ЗАПИСЫВАЕМ РЕАКЦИЮ АКТОРА С scene_id ==========
+                            GameHistory::create([
+                                'game_id' => $game->id,
+                                'event_id' => $event->id,
+                                'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+                                'source' => GameHistory::SOURCE_ACTOR,
+                            ]);
 
                             $messages = [];
                             foreach ($event->effects as $effect) {

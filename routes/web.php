@@ -13,8 +13,7 @@ use App\Livewire\GamesManager;
 use App\Livewire\GamePlay;
 use App\Livewire\ScenarioSelector;
 use App\Livewire\UserGames;
-use App\Controllers\TestController;
-
+use App\Livewire\GameResults;
 
 Route::get('/', function () {
     return view('welcome');
@@ -29,11 +28,7 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
-Route::middleware(['auth'])->group(function () {
-    Route::get('/game/play/{scenarioId}', GamePlay::class)
-        ->name('game.play')
-        ->where('scenarioId', '[0-9]+');
-});
+
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/companies', CompaniesManager::class)->name('companies');
     Route::get('/scenarios', ScenariosManager::class)->name('scenarios');
@@ -44,39 +39,27 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/company-scenarios', CompanyScenarioManager::class)->name('company-scenarios');
     Route::get('/presets', PresetsManager::class)->name('presets');
     Route::get('/games', GamesManager::class)->name('games');
-
 });
+
 Route::middleware(['auth'])->group(function () {
     // Страница выбора сценария
-    Route::get('/scenarios', ScenarioSelector::class)
-        ->name('scenarios');
+    Route::get('/scenarios', ScenarioSelector::class)->name('scenarios');
 
-    // Страница игры
-    Route::get('/game/play/{scenarioId}', GamePlay::class)
-        ->name('game.play')
-        ->where('scenarioId', '[0-9]+');
-});
-//Route::middleware(['auth'])->prefix('test')->group(function () {
-//    Route::get('/game/{gameId}', [TestController::class, 'showGame']);
-//    Route::get('/state/{gameId}', [TestController::class, 'showState']);
-//});
-
-Route::middleware(['auth'])->group(function () {
     // Страница со списком игр
-    Route::get('/my-games', UserGames::class)
-        ->name('user.games');
+    Route::get('/my-games', UserGames::class)->name('user.games');
 
-    // Страница выбора сценария
-    Route::get('/scenarios', ScenarioSelector::class)
-        ->name('scenarios');
+    // Результаты игры
+    Route::get('/game/results/{gameId}', GameResults::class)
+        ->name('game.results')
+        ->where('gameId', '[0-9]+');
 
-    // Новая игра (передаем scenarioId и difficulty)
+    // Новая игра (с параметром difficulty — опциональный)
     Route::get('/game/play/{scenarioId}/{difficulty?}', GamePlay::class)
         ->name('game.play')
         ->where('scenarioId', '[0-9]+')
         ->where('difficulty', 'easy|medium|hard|expert|custom');
 
-    // Продолжить игру (передаем gameId)
+    // Продолжить игру
     Route::get('/game/continue/{gameId}', GamePlay::class)
         ->name('game.continue')
         ->where('gameId', '[0-9]+');
