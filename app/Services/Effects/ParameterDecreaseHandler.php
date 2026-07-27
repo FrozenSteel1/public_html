@@ -10,7 +10,8 @@ class ParameterDecreaseHandler implements EffectHandlerInterface
 {
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
-        $data = json_decode($effect->effect_data, true);
+//        $data = json_decode($effect->effect_data, true);
+        $data = $effect->effect_data;
         $key = $data['key'] ?? null;
         $value = $data['value'] ?? null;
 

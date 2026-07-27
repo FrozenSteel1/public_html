@@ -101,6 +101,9 @@ class GameService
     /**
      * Сделать выбор
      */
+    /**
+     * Сделать выбор
+     */
     public function makeChoice(int $gameId, int $choiceId): array
     {
         Log::info('makeChoice начат', ['game_id' => $gameId, 'choice_id' => $choiceId]);
@@ -129,7 +132,7 @@ class GameService
         GameHistory::create([
             'game_id' => $gameId,
             'event_id' => $choice->event_id,
-            'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+            'scene_id' => $game->current_scene_id,
             'source' => GameHistory::SOURCE_PLAYER,
         ]);
 
@@ -146,7 +149,7 @@ class GameService
                 GameHistory::create([
                     'game_id' => $gameId,
                     'event_id' => $event->id,
-                    'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+                    'scene_id' => $game->current_scene_id,
                     'source' => GameHistory::SOURCE_ACTOR,
                 ]);
             }
@@ -202,20 +205,23 @@ class GameService
     {
         // ========== РУЧНАЯ ОБРАБОТКА СООБЩЕНИЙ ==========
         $data = $effect->effect_data;
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-
-        if (is_array($data) && isset($data['message'])) {
+Log::alert('2222222222222222222222222222222222222222',$data);
+//        if (is_string($data)) {
+//            $data = json_decode($data, true);
+//        }
+//        if (is_string($data)) {
+//            $data = json_decode($data, true);
+//        }
+        Log::alert('======================',[is_array($data),isset($data['message']),$effect->effect_type_id==12]);
+        if (is_array($data) && isset($data['message']) && $effect->effect_type_id==12) {
             $messages = session()->get('game_messages', []);
+
             $messages[] = [
                 'text' => $data['message'],
                 'type' => $data['type'] ?? 'info',
                 'timestamp' => now()->toDateTimeString(),
             ];
+
             session()->put('game_messages', $messages);
             Log::info('Сообщение сохранено (ручная обработка)', ['message' => $data['message']]);
             return $state;
@@ -289,7 +295,9 @@ class GameService
 
                             $messages = [];
                             foreach ($event->effects as $effect) {
-                                $data = json_decode($effect->effect_data, true);
+//                                $data = json_decode($effect->effect_data, true);
+                                $data = $effect->effect_data;
+                                Log::alert("------proceco triger",$data);
                                 if (isset($data['message']) && !empty($data['message'])) {
                                     $messages[] = $data['message'];
                                 }
@@ -317,7 +325,13 @@ class GameService
 
         return $triggeredEvents;
     }
-
+    /**
+     * Получить созревшие отложенные сообщения
+     */
+    public function getReadyDelayedMessages(): array
+    {
+        return $this->effectManager->getDelayedMessages();
+    }
     /**
      * Проверить условие триггера
      */

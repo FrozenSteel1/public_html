@@ -50,7 +50,9 @@ class GamePlay extends Component
     ];
     protected GameService $gameService;
     protected EffectManager $effectManager;
-
+    public array $delayedMessages = [];
+    public bool $hasDelayedMessages = false;
+    public bool $showDelayedModal = false;
     public function boot(GameService $gameService): void
     {
         $this->gameService = $gameService;
@@ -186,6 +188,9 @@ class GamePlay extends Component
         $this->loadSceneActors();
         $this->triggeredEvents = [];
 
+        // ========== ПРОВЕРКА ОТЛОЖЕННЫХ СООБЩЕНИЙ ==========
+        $this->checkDelayedMessages();
+
         $this->restartTimer();
 
         $this->dispatch('console-log', [
@@ -195,11 +200,46 @@ class GamePlay extends Component
             'current_scene' => $this->scene->title ?? 'unknown',
             'state' => $this->currentState,
             'available_choices_count' => count($this->availableChoices),
+            'has_delayed_messages' => $this->hasDelayedMessages,
+            'delayed_messages_count' => count($this->delayedMessages),
         ]);
 
         $this->renderKey++;
     }
+    public function openDelayedModal(): void
+    {
+        $this->showDelayedModal = true;
+    }
 
+    public function closeDelayedModal(): void
+    {
+        $this->showDelayedModal = false;
+        $this->hasDelayedMessages = false;
+        $this->delayedMessages = [];
+    }
+    private function checkDelayedMessages(): void
+    {
+        Log::info('checkDelayedMessages: начат');
+
+        $readyMessages = $this->gameService->getReadyDelayedMessages();
+
+        Log::info('checkDelayedMessages: результат', [
+            'readyMessages' => $readyMessages,
+        ]);
+
+        if (!empty($readyMessages)) {
+            $this->delayedMessages = $readyMessages;
+            $this->hasDelayedMessages = true;
+            Log::info('Найдены созревшие отложенные сообщения', [
+                'count' => count($readyMessages),
+                'messages' => $readyMessages,
+            ]);
+        } else {
+            $this->hasDelayedMessages = false;
+            $this->delayedMessages = [];
+            Log::info('Нет созревших отложенных сообщений');
+        }
+    }
     private function loadHistory(): void
     {
         $this->gameHistory = $this->game->gameHistories()

@@ -175,6 +175,30 @@
                     @endif
                 </div>
 
+                <!-- Конверт с отложенными сообщениями -->
+                <div wire:key="delayed-{{ $game->id }}" class="bg-white rounded-xl shadow-md p-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-700">✉️ Сообщения</h3>
+                        @if($hasDelayedMessages)
+                            <button
+                                wire:click="openDelayedModal"
+                                class="relative flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-full hover:bg-red-600 transition animate-pulse"
+                            >
+                                <span class="text-base">❗</span>
+                                Новые сообщения
+                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-300 rounded-full"></span>
+                            </button>
+                        @else
+                            <span class="text-xs text-gray-400">Нет новых сообщений</span>
+                        @endif
+                    </div>
+                    @if($hasDelayedMessages)
+                        <div class="mt-2 text-xs text-gray-500">
+                            Нажмите на кнопку, чтобы прочитать сообщения
+                        </div>
+                    @endif
+                </div>
+
                 <!-- История событий -->
                 <div wire:key="history-{{ $game->id }}" class="bg-white rounded-xl shadow-md p-4">
                     <h3 class="text-sm font-semibold text-gray-700 mb-3">📜 История</h3>
@@ -209,7 +233,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно с сообщением -->
+    <!-- Модальное окно с обычным сообщением -->
     @if($showMessageModal && !empty($currentModalMessage))
         <div wire:key="modal-{{ $game->id }}" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
             <div style="background: white; border-radius: 12px; max-width: 400px; width: 90%; margin: 0 auto; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -230,6 +254,56 @@
                         Продолжить
                     </button>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Модальное окно для отложенных сообщений -->
+    @if($showDelayedModal && !empty($delayedMessages))
+        <div
+            wire:key="delayed-modal-{{ $game->id }}"
+            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;"
+            wire:click.self="closeDelayedModal"
+        >
+            <div style="background: white; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; margin: 0 auto; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #1f2937;">✉️ Сообщения</h3>
+                    <button
+                        wire:click="closeDelayedModal"
+                        style="background: none; border: none; font-size: 24px; cursor: pointer; color: #9ca3af;"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    @foreach($delayedMessages as $index => $message)
+                        <div style="padding: 12px 16px; background: #f3f4f6; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: 600; color: #3b82f6;">
+                                    {{ $message['type'] ?? 'Сообщение' }}
+                                </span>
+                                <span style="font-size: 10px; color: #9ca3af;">
+                                    {{ $message['created_at'] ?? now()->format('d.m.Y H:i') }}
+                                </span>
+                            </div>
+                            <p style="color: #374151; font-size: 14px; line-height: 1.5; margin: 0;">
+                                {{ $message['message'] }}
+                            </p>
+                        </div>
+
+                        @if($index < count($delayedMessages) - 1)
+                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 4px 0;">
+                        @endif
+                    @endforeach
+                </div>
+
+                <button
+                    wire:click="closeDelayedModal"
+                    style="margin-top: 20px; padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; width: 100%;"
+                >
+                    Понятно
+                </button>
             </div>
         </div>
     @endif
