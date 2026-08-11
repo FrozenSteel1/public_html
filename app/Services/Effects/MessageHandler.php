@@ -11,7 +11,6 @@ class MessageHandler implements EffectHandlerInterface
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
         $data = $effect->effect_data;
-
         if (is_string($data)) {
             $data = json_decode($data, true);
         }
@@ -28,6 +27,14 @@ class MessageHandler implements EffectHandlerInterface
                 'text' => $message,
                 'type' => $type,
                 'timestamp' => now()->toDateTimeString(),
+                // Опциональные метаданные письма (UI V1, экран 10).
+                // Если ключей нет в effect_data — вью использует безопасные фолбэки.
+                'actor' => $data['actor'] ?? null,
+                'sender' => $data['sender'] ?? null,
+                'subject' => $data['subject'] ?? null,
+                'priority' => $data['priority'] ?? null,
+                'urgent' => $data['urgent'] ?? null,
+                'time' => now()->format('d.m.Y H:i'),
             ];
             session()->put('game_messages', $messages);
 

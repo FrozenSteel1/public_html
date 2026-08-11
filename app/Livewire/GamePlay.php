@@ -566,50 +566,30 @@ class GamePlay extends Component
 
             // ========== ПОЛУЧАЕМ СООБЩЕНИЯ ==========
             $this->gameMessages = $this->effectManager->getMessages();
-
-            // Если сообщений нет — проверяем сессию напрямую
             if (empty($this->gameMessages)) {
                 $this->gameMessages = session()->get('game_messages', []);
-                Log::info('Сообщения из сессии напрямую', ['messages' => $this->gameMessages]);
+                session()->forget('game_messages');
             }
-            // ========== СНИМОК РЕЗУЛЬТАТА (ЭКРАН 11) И ВХОДЯЩИЕ (ЭКРАН 12) ==========
-            $this->resultSnapshot = [
-                'decision' => collect($this->availableChoices)->firstWhere('id', $choiceId)->description ?? 'Решение принято',
-                'scene' => $result['next_scene']->title ?? $this->scene->title ?? '',
-                'events' => collect($this->triggeredEvents)->map(fn ($t) => [
-                    'actor' => $t['actor_name'] ?? 'Актор',
-                    'event' => $t['event_name'] ?? 'Событие',
-                ])->values()->toArray(),
-                'messages' => $this->gameMessages,
-            ];
+
+            // Входящие для экранов 11–12
             $this->inboxMessages = $this->normalizeMessages($this->gameMessages);
             $this->readInboxIds = [];
-            Log::info('Сообщения в selectChoice', [
-                'game_messages' => $this->gameMessages,
-            ]);
 
-            // Если есть сообщения — показываем модальное окно
+            // ========== ПРИМЕНЯЕМ РЕЗУЛЬТАТ СРАЗУ ==========
+            $this->applyGameResult($result);
+            $this->decisionsDoc = 'result';
+
+            // Сброс состояния решений для новой сцены
+            $this->selectedChoiceId = null;
+            $this->decisionDeadline = null;
+            $this->decisionExpired = false;
+
+            // Если есть сообщения — показываем модальное окно поверх результата
             if (count($this->gameMessages) > 0) {
                 $this->currentModalMessage = $this->gameMessages[0];
                 $this->showMessageModal = true;
                 $this->messageShown = false;
-                $this->decisionsDoc = 'result';
-                $this->pendingResult = [
-                    'game' => $this->game,
-                    'next_scene' => $result['next_scene'],
-                    'new_state' => $result['new_state'],
-                    'triggered_events' => $result['triggered_events'],
-                ];
-
-                Log::info('Модальное окно открыто', [
-                    'message' => $this->currentModalMessage['text'],
-                ]);
-
-                $this->renderKey++;
-                return;
             }
-
-            // Если сообщений нет — сразу применяем результат
             $this->applyGameResult($result);
             $this->decisionsDoc = 'result';
         } catch (\Exception $e) {
@@ -625,7 +605,7 @@ class GamePlay extends Component
     {
         Log::info('applyGameResult начат', [
             'game_id' => $this->game->id,
-            'next_scene_id' => $result['next_scene']->id ?? null,
+            'next_scene_id' => $result['next_scene_id'] ?? null,
         ]);
 
         $this->game = Game::with([
@@ -666,20 +646,9 @@ class GamePlay extends Component
 
     public function closeMessageModal(): void
     {
-        Log::info('closeMessageModal вызван', [
-            'has_pending_result' => !empty($this->pendingResult),
-        ]);
         $this->showMessageModal = false;
         $this->messageShown = true;
-        if (!empty($this->pendingResult)) {
-            $this->applyGameResult($this->pendingResult);
-            $this->pendingResult = [];
-            $this->decisionsDoc = 'result';
-            $this->gameplayTab = 'decisions';
-        } elseif ($this->decisionsDoc === 'decisions') {
-            $this->loadGameData();
-        }
-        $this->dispatch('$refresh');
+        $this->currentModalMessage = [];
     }
 
 

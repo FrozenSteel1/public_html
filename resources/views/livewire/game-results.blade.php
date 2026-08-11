@@ -1,5 +1,5 @@
 <div>
-    <div class="app-workspace app-workspace--results app-workspace--{{ $annualTab }}">
+    <div class="app-workspace app-workspace--results">
         <section class="app-workspace__main">
             <div class="dossier dossier--results">
                 <div class="dossier__cover" aria-hidden="true">
@@ -27,50 +27,31 @@
                                 <p class="document-sheet__subtitle">{{ $results['subtitle'] }}</p>
                                 <div class="document-sheet__divider" aria-hidden="true"><span></span></div>
                             </header>
-                            <div class="document-sheet__body annual-document__body" tabindex="0" role="region" aria-label="Содержимое годового отчёта">
+                            <div class="document-sheet__body annual-document__body">
                                 <section class="annual-portrait">
                                     <h2>ОБЩИЙ ПОРТРЕТ ОКРУГА</h2>
                                     <div class="annual-portrait__columns">
                                         <div>
-                                            @foreach(array_slice($results['portrait'], 0, 3) as $paragraph)
-                                                <p>{{ $paragraph }}</p>
-                                            @endforeach
+                                            @foreach(array_slice($results['portrait'], 0, 3) as $p)<p>{{ $p }}</p>@endforeach
                                         </div>
                                         <div>
-                                            @foreach(array_slice($results['portrait'], 3) as $paragraph)
-                                                <p>{{ $paragraph }}</p>
-                                            @endforeach
+                                            @foreach(array_slice($results['portrait'], 3) as $p)<p>{{ $p }}</p>@endforeach
                                         </div>
                                     </div>
                                 </section>
 
                                 <div class="annual-outcomes">
                                     <section class="annual-outcome annual-outcome--strengthened">
-                                        <header>
-                                            <x-game.icon name="scales" class="annual-outcome__icon" />
-                                            <h2>УКРЕПИЛОСЬ</h2>
-                                        </header>
-                                        <ul>
-                                            @foreach($results['strengthened'] as $item)<li>{{ $item }}</li>@endforeach
-                                        </ul>
+                                        <header><x-game.icon name="chart" class="annual-outcome__icon" /><h2>УКРЕПИЛОСЬ</h2></header>
+                                        <ul>@foreach($results['strengthened'] as $i)<li>{{ $i }}</li>@endforeach</ul>
                                     </section>
                                     <section class="annual-outcome annual-outcome--weakened">
-                                        <header>
-                                            <x-game.icon name="chart" class="annual-outcome__icon" />
-                                            <h2>ОСЛАБЛО</h2>
-                                        </header>
-                                        <ul>
-                                            @foreach($results['weakened'] as $item)<li>{{ $item }}</li>@endforeach
-                                        </ul>
+                                        <header><x-game.icon name="chart" class="annual-outcome__icon" /><h2>ОСЛАБЛО</h2></header>
+                                        <ul>@foreach($results['weakened'] as $i)<li>{{ $i }}</li>@endforeach</ul>
                                     </section>
                                     <section class="annual-outcome annual-outcome--vulnerable">
-                                        <header>
-                                            <x-game.icon name="question" class="annual-outcome__icon" />
-                                            <h2>ОСТАЛОСЬ УЯЗВИМЫМ</h2>
-                                        </header>
-                                        <ul>
-                                            @foreach($results['vulnerable'] as $item)<li>{{ $item }}</li>@endforeach
-                                        </ul>
+                                        <header><x-game.icon name="question" class="annual-outcome__icon" /><h2>ОСТАЛОСЬ УЯЗВИМЫМ</h2></header>
+                                        <ul>@foreach($results['vulnerable'] as $i)<li>{{ $i }}</li>@endforeach</ul>
                                     </section>
                                 </div>
 
@@ -94,9 +75,7 @@
                                     <div>
                                         <h2>ФИНАЛЬНОЕ СОСТОЯНИЕ ОКРУГА</h2>
                                         <h3>{{ $results['title'] }}</h3>
-                                        @foreach($results['finalDescription'] as $paragraph)
-                                            <p>{{ $paragraph }}</p>
-                                        @endforeach
+                                        @foreach($results['finalDescription'] as $p)<p>{{ $p }}</p>@endforeach
                                     </div>
                                 </section>
                             </div>
@@ -117,17 +96,15 @@
                                 <p class="document-sheet__subtitle">Управленческий профиль и ключевые решения года</p>
                                 <div class="document-sheet__divider" aria-hidden="true"><span></span></div>
                             </header>
-                            <div class="document-sheet__body management-review__body" tabindex="0" role="region" aria-label="Содержимое годового отчёта">
+                            <div class="document-sheet__body management-review__body">
                                 <section class="review-profile">
                                     <h2>УПРАВЛЕНЧЕСКИЙ ПРОФИЛЬ</h2>
                                     <h3>{{ $review['profileTitle'] }}</h3>
                                     <div class="review-profile__narrative">
-                                        @foreach($review['profileNarrative'] as $paragraph)
-                                            <p>{{ $paragraph }}</p>
-                                        @endforeach
+                                        @foreach($review['profileNarrative'] as $p)<p>{{ $p }}</p>@endforeach
                                     </div>
                                     <ul class="review-profile__markers">
-                                        @foreach($review['markers'] as $marker)<li>{{ $marker }}</li>@endforeach
+                                        @foreach($review['markers'] as $m)<li>{{ $m }}</li>@endforeach
                                     </ul>
                                 </section>
 
@@ -178,9 +155,7 @@
                                     <x-game.icon name="compass" class="review-pattern__icon" />
                                     <div>
                                         <h2>КЛЮЧЕВОЙ ПАТТЕРН УПРАВЛЕНИЯ</h2>
-                                        @foreach($review['keyPattern'] as $paragraph)
-                                            <p>{{ $paragraph }}</p>
-                                        @endforeach
+                                        @foreach($review['keyPattern'] as $p)<p>{{ $p }}</p>@endforeach
                                     </div>
                                 </section>
 
@@ -199,7 +174,7 @@
                                 <section class="review-priorities">
                                     <h2>ПРИОРИТЕТЫ НА СЛЕДУЮЩИЙ ГОД</h2>
                                     <ul class="review-priorities__list">
-                                        @foreach($review['priorities'] as $priority)<li>{{ $priority }}</li>@endforeach
+                                        @foreach($review['priorities'] as $p)<li>{{ $p }}</li>@endforeach
                                     </ul>
                                     <p>{{ $review['prioritySummary'] }}</p>
                                 </section>
@@ -228,7 +203,7 @@
                                 <p class="chronicle-header__support">Проследите, как управленческие решения в течение года влияли на аппарат, жителей, подрядчиков, публичную среду и устойчивость округа.</p>
                                 <div class="document-sheet__divider" aria-hidden="true"><span></span></div>
                             </header>
-                            <div class="document-sheet__body chronicle-document__body" tabindex="0" role="region" aria-label="Содержимое годовой хроники">
+                            <div class="document-sheet__body chronicle-document__body">
                                 <section class="chronicle-summary">
                                     <h2>Год в решениях</h2>
                                     <dl>
@@ -242,7 +217,6 @@
                                 </section>
 
                                 <section class="chronicle-toolbar" aria-label="Фильтры хроники">
-                                    <h2 class="visually-hidden">Фильтры хроники</h2>
                                     <label class="chronicle-toolbar__field">
                                         <span>Вид</span>
                                         <select wire:model.live="chronicleFilter">
@@ -255,11 +229,11 @@
                                         <span>Актор</span>
                                         <select wire:model.live="chronicleActorFilter">
                                             <option value="all">Все акторы</option>
-                                            <option value="Аппарат">Аппарат</option>
-                                            <option value="Жители">Жители</option>
-                                            <option value="Подрядчики">Подрядчики</option>
-                                            <option value="СМИ">СМИ</option>
-                                            <option value="Регион">Регион</option>
+                                            <option>Аппарат</option>
+                                            <option>Жители</option>
+                                            <option>Подрядчики</option>
+                                            <option>СМИ</option>
+                                            <option>Регион</option>
                                         </select>
                                     </label>
                                     <label class="chronicle-toolbar__field">
@@ -281,7 +255,7 @@
                                                 <header class="chronicle-entry__header">
                                                     <div>
                                                         <p class="chronicle-entry__meta">{{ $entry['month'] }} · Сцена {{ $entry['scene'] }}</p>
-                                                        <h2>{{ $entry['title'] }}</h2>
+                                                        <h3>{{ $entry['title'] }}</h3>
                                                     </div>
                                                     <div class="chronicle-entry__badges">
                                                         @if($entry['turningPoint'])<span class="chronicle-badge chronicle-badge--turning">Поворотное решение</span>@endif
@@ -299,19 +273,10 @@
                                                     {{ $this->isChronicleExpanded($entry['id']) ? 'Свернуть' : 'Развернуть' }}
                                                 </button>
                                                 <div id="chronicle-details-{{ $entry['id'] }}" class="chronicle-entry__details" @unless($this->isChronicleExpanded($entry['id'])) hidden @endunless>
-                                                    <section class="chronicle-detail chronicle-detail--standard">
-                                                        <h3>Ситуация</h3>
-                                                        <p>{{ $entry['situation'] }}</p>
-                                                    </section>
-                                                    <section class="chronicle-detail chronicle-detail--standard">
-                                                        <h3>Немедленный результат</h3>
-                                                        <p>{{ $entry['result'] }}</p>
-                                                    </section>
+                                                    <section class="chronicle-detail chronicle-detail--standard"><h3>Ситуация</h3><p>{{ $entry['situation'] }}</p></section>
+                                                    <section class="chronicle-detail chronicle-detail--standard"><h3>Немедленный результат</h3><p>{{ $entry['result'] }}</p></section>
                                                     @if($entry['delayed'])
-                                                        <section class="chronicle-detail chronicle-detail--standard">
-                                                            <h3>Отложенное последствие</h3>
-                                                            <p>{{ $entry['delayed'] }}</p>
-                                                        </section>
+                                                        <section class="chronicle-detail chronicle-detail--standard"><h3>Отложенное последствие</h3><p>{{ $entry['delayed'] }}</p></section>
                                                     @endif
                                                     @if($entry['related'])
                                                         <section class="chronicle-detail chronicle-detail--standard">
@@ -322,15 +287,10 @@
                                                             @endif
                                                         </section>
                                                     @endif
-                                                    <section class="chronicle-detail chronicle-detail--recommendation">
-                                                        <h3>Рекомендация</h3>
-                                                        <p>{{ $entry['recommendation'] }}</p>
-                                                    </section>
+                                                    <section class="chronicle-detail chronicle-detail--recommendation"><h3>Рекомендация</h3><p>{{ $entry['recommendation'] }}</p></section>
                                                     <div class="chronicle-entry__actors">
                                                         <strong>Участники</strong>
-                                                        <ul>
-                                                            @foreach($entry['actors'] as $actor)<li>{{ $actor }}</li>@endforeach
-                                                        </ul>
+                                                        <ul>@foreach($entry['actors'] as $a)<li>{{ $a }}</li>@endforeach</ul>
                                                     </div>
                                                 </div>
                                             </article>
@@ -355,179 +315,103 @@
                 <div class="dossier__tabs-rail">
                     <nav class="folder-tabs folder-tabs--annual" aria-label="Годовые разделы папки">
                         <ul class="folder-tabs__list">
-                            <li class="folder-tabs__item">
-                                <button type="button" class="folder-tabs__button" disabled>
-                                    <span class="folder-tabs__label">Сценарий</span>
-                                </button>
-                            </li>
-                            <li class="folder-tabs__item">
-                                <button type="button" class="folder-tabs__button" wire:click="setAnnualTab('year-results')" @if($annualTab === 'year-results') aria-current="page" @endif>
-                                    <span class="folder-tabs__label">Итоги года</span>
-                                </button>
-                            </li>
-                            <li class="folder-tabs__item">
-                                <button type="button" class="folder-tabs__button" wire:click="setAnnualTab('management-review')" @if($annualTab === 'management-review') aria-current="page" @endif>
-                                    <span class="folder-tabs__label">Разбор управления</span>
-                                </button>
-                            </li>
-                            <li class="folder-tabs__item">
-                                <button type="button" class="folder-tabs__button" wire:click="setAnnualTab('year-chronicle')" @if($annualTab === 'year-chronicle') aria-current="page" @endif>
-                                    <span class="folder-tabs__label">Хроника года</span>
-                                </button>
-                            </li>
-                            <li class="folder-tabs__item">
-                                <button type="button" class="folder-tabs__button" disabled>
-                                    <span class="folder-tabs__label">Приложения</span>
-                                </button>
-                            </li>
+                            <li class="folder-tabs__item"><button type="button" class="folder-tabs__button" disabled><span class="folder-tabs__label">Сценарий</span></button></li>
+                            <li class="folder-tabs__item"><button type="button" class="folder-tabs__button" wire:click="setAnnualTab('year-results')" @if($annualTab === 'year-results') aria-current="page" @endif><span class="folder-tabs__label">Итоги года</span></button></li>
+                            <li class="folder-tabs__item"><button type="button" class="folder-tabs__button" wire:click="setAnnualTab('management-review')" @if($annualTab === 'management-review') aria-current="page" @endif><span class="folder-tabs__label">Разбор управления</span></button></li>
+                            <li class="folder-tabs__item"><button type="button" class="folder-tabs__button" wire:click="setAnnualTab('year-chronicle')" @if($annualTab === 'year-chronicle') aria-current="page" @endif><span class="folder-tabs__label">Хроника года</span></button></li>
+                            <li class="folder-tabs__item"><button type="button" class="folder-tabs__button" disabled><span class="folder-tabs__label">Приложения</span></button></li>
                         </ul>
                     </nav>
                 </div>
-
                 <div class="dossier__clasp" aria-hidden="true"></div>
             </div>
         </section>
 
-        <aside class="app-workspace__sidebar" aria-label="@if($annualTab === 'year-results') Итоговая информация @elseif($annualTab === 'management-review') Краткий разбор управления @else Навигация по годовой хронике @endif">
-            {{-- Сайдбар: итоги года --}}
+        <aside class="app-workspace__sidebar" aria-label="Итоговая информация">
             @if($annualTab === 'year-results')
                 @php $results = $this->getAnnualResults(); @endphp
                 <div class="sidebar sidebar--results">
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="flag" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Статус сценария</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="flag" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Статус сценария</h2></header>
                         <div class="sidebar-panel__body">
                             <p class="results-completion__value">{{ $results['completionStatus'] }}</p>
                             <p class="results-completion__supporting">Пройдено {{ $totalSteps }} сцен.</p>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="group" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Портрет года</h2>
-                        </header>
-                        <div class="sidebar-panel__body">
-                            <ul class="results-list">
-                                @foreach($results['sidebar']['portrait'] as $item)<li>{{ $item }}</li>@endforeach
-                            </ul>
-                        </div>
+                        <header class="sidebar-panel__header"><x-game.icon name="group" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Портрет года</h2></header>
+                        <div class="sidebar-panel__body"><ul class="results-list">@foreach($results['sidebar']['portrait'] as $i)<li>{{ $i }}</li>@endforeach</ul></div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="building" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Ключевые последствия</h2>
-                        </header>
-                        <div class="sidebar-panel__body">
-                            <ul class="results-list">
-                                @foreach($results['sidebar']['consequences'] as $item)<li>{{ $item }}</li>@endforeach
-                            </ul>
-                        </div>
+                        <header class="sidebar-panel__header"><x-game.icon name="building" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Ключевые последствия</h2></header>
+                        <div class="sidebar-panel__body"><ul class="results-list">@foreach($results['sidebar']['consequences'] as $i)<li>{{ $i }}</li>@endforeach</ul></div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="compass" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Следующий шаг</h2>
-                        </header>
-                        <div class="sidebar-panel__body">
-                            <p class="results-summary">{{ $results['sidebar']['nextStep'] }}</p>
-                        </div>
+                        <header class="sidebar-panel__header"><x-game.icon name="compass" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Следующий шаг</h2></header>
+                        <div class="sidebar-panel__body"><p class="results-summary">{{ $results['sidebar']['nextStep'] }}</p></div>
                     </section>
                 </div>
-
-                {{-- Сайдбар: разбор управления --}}
             @elseif($annualTab === 'management-review')
-                @php $reviewSidebar = $this->getManagementReview()['sidebar']; @endphp
+                @php $rs = $this->getManagementReview()['sidebar']; @endphp
                 <div class="app-sidebar app-sidebar--review">
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="group" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Профиль управления</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="group" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Профиль управления</h2></header>
                         <div class="sidebar-panel__body">
-                            <p class="review-sidebar__value">{{ $reviewSidebar['profile']['title'] }}</p>
-                            <ul class="review-sidebar__list">
-                                @foreach($reviewSidebar['profile']['items'] as $item)<li>{{ $item }}</li>@endforeach
-                            </ul>
+                            <p class="review-sidebar__value">{{ $rs['profile']['title'] }}</p>
+                            <ul class="review-sidebar__list">@foreach($rs['profile']['items'] as $i)<li>{{ $i }}</li>@endforeach</ul>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="scales" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Сильная сторона</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="scales" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Сильная сторона</h2></header>
                         <div class="sidebar-panel__body">
-                            <p class="review-sidebar__value">{{ $reviewSidebar['strength']['title'] }}</p>
-                            <p class="review-sidebar__description">{{ $reviewSidebar['strength']['description'] }}</p>
+                            <p class="review-sidebar__value">{{ $rs['strength']['title'] }}</p>
+                            <p class="review-sidebar__description">{{ $rs['strength']['description'] }}</p>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="question" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Главный риск</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="question" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Главный риск</h2></header>
                         <div class="sidebar-panel__body">
-                            <p class="review-sidebar__value">{{ $reviewSidebar['risk']['title'] }}</p>
-                            <p class="review-sidebar__description">{{ $reviewSidebar['risk']['description'] }}</p>
+                            <p class="review-sidebar__value">{{ $rs['risk']['title'] }}</p>
+                            <p class="review-sidebar__description">{{ $rs['risk']['description'] }}</p>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="compass" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Рекомендация</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="compass" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Рекомендация</h2></header>
                         <div class="sidebar-panel__body">
-                            <p class="review-sidebar__value">{{ $reviewSidebar['recommendation']['title'] }}</p>
-                            <p class="review-sidebar__description">{{ $reviewSidebar['recommendation']['description'] }}</p>
+                            <p class="review-sidebar__value">{{ $rs['recommendation']['title'] }}</p>
+                            <p class="review-sidebar__description">{{ $rs['recommendation']['description'] }}</p>
                         </div>
                     </section>
                 </div>
-
-                {{-- Сайдбар: хроника года --}}
             @else
                 @php
-                    $chronicleData = $this->getChronicle();
-                    $sidebarTurning = collect($chronicleData['entries'])->filter(fn ($e) => $e['turningPoint'])->pluck('month');
+                    $cd = $this->getChronicle();
+                    $sidebarTurning = collect($cd['entries'])->filter(fn ($e) => $e['turningPoint'])->pluck('month');
                 @endphp
                 <div class="app-sidebar app-sidebar--chronicle">
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="clock" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Хроника года</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="clock" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Хроника года</h2></header>
                         <div class="sidebar-panel__body">
                             <p class="review-sidebar__value">{{ $totalSteps }} месяцев управления</p>
                             <p class="review-sidebar__description">Решения, результаты и отложенные последствия.</p>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="scales" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Поворотные решения</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="scales" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Поворотные решения</h2></header>
                         <div class="sidebar-panel__body">
                             <p class="review-sidebar__value">{{ $sidebarTurning->count() }} ключевых эпизода</p>
-                            <ul class="review-sidebar__list">
-                                @foreach($sidebarTurning as $month)<li>{{ $month }}</li>@endforeach
-                            </ul>
+                            <ul class="review-sidebar__list">@foreach($sidebarTurning as $m)<li>{{ $m }}</li>@endforeach</ul>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="chart" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Главная связь</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="chart" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Главная связь</h2></header>
                         <div class="sidebar-panel__body">
                             <p class="review-sidebar__value">Быстрые решения усиливали зависимость системы от главы</p>
                             <p class="review-sidebar__description">Краткосрочная управляемость росла быстрее, чем самостоятельность аппарата.</p>
                         </div>
                     </section>
                     <section class="sidebar-panel">
-                        <header class="sidebar-panel__header">
-                            <x-game.icon name="compass" class="sidebar-panel__icon" />
-                            <h2 class="sidebar-panel__title">Навигация</h2>
-                        </header>
+                        <header class="sidebar-panel__header"><x-game.icon name="compass" class="sidebar-panel__icon" /><h2 class="sidebar-panel__title">Навигация</h2></header>
                         <div class="sidebar-panel__body">
                             <p class="review-sidebar__value">Связи между событиями</p>
                             <p class="review-sidebar__description">Используйте фильтры и связи между событиями, чтобы проследить влияние решений на последующие месяцы.</p>
@@ -541,13 +425,13 @@
     {{-- Модальное окно подтверждения переигровки --}}
     @if($replayConfirmationOpen)
         <div class="replay-backdrop" wire:click="closeReplayConfirmation" x-on:keydown.escape.window="$wire.closeReplayConfirmation()">
-            <article class="replay-dialog" role="dialog" aria-modal="true" aria-labelledby="replay-dialog-title" aria-describedby="replay-dialog-description" wire:click.stop>
+            <article class="replay-dialog" role="dialog" aria-modal="true" aria-labelledby="replay-dialog-title" wire:click.stop>
                 <header class="replay-dialog__header">
                     <x-game.icon name="question" class="replay-dialog__icon" />
                     <h2 id="replay-dialog-title">Начать сценарий заново?</h2>
-                    <button type="button" class="replay-dialog__close" wire:click="closeReplayConfirmation" aria-label="Закрыть подтверждение">×</button>
+                    <button type="button" class="replay-dialog__close" wire:click="closeReplayConfirmation" aria-label="Закрыть">×</button>
                 </header>
-                <p id="replay-dialog-description" class="replay-dialog__copy">Текущий прогресс прохождения будет сброшен.</p>
+                <p class="replay-dialog__copy">Текущий прогресс прохождения будет сброшен.</p>
                 <footer class="replay-dialog__footer">
                     <button type="button" class="document-action document-action--secondary" wire:click="closeReplayConfirmation">Отмена</button>
                     <button type="button" class="document-action document-action--primary replay-dialog__confirm" wire:click="confirmReplay">Начать заново</button>

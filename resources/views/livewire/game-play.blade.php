@@ -473,15 +473,21 @@
                                                 return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
                                             }
                                         }"
-                                         x-init="if (deadline && !expired) {
-                                            const t = setInterval(() => {
-                                                now = Math.floor(Date.now() / 1000);
-                                                const left = deadline - now;
-                                                if (left === 60) announce = 'До окончания времени на решение осталась одна минута.';
-                                                if (left === 30) announce = 'До окончания времени на решение осталось тридцать секунд.';
-                                                if (left <= 0) { expired = true; clearInterval(t); $wire.timeExpired(); }
-                                            }, 500);
-                                        }">
+                                         x-effect="
+    if (deadline && !expired) {
+        const t = setInterval(() => {
+            now = Math.floor(Date.now() / 1000);
+            const left = deadline - now;
+            if (left === 60) announce = 'До окончания времени на решение осталась одна минута.';
+            if (left === 30) announce = 'До окончания времени на решение осталось тридцать секунд.';
+            if (left <= 0) { expired = true; clearInterval(t); $wire.timeExpired(); }
+        }, 500);
+
+        // Эта функция автоматически вызовется при уничтожении компонента
+        // или когда изменится expired/deadline и эффект перезапустится
+        return () => clearInterval(t);
+    }
+">
                                         <div class="decision-timer__line">
                                             <x-game.icon name="clock" class="decision-timer__icon" />
                                             <span>Время на решение:</span>
@@ -1088,53 +1094,43 @@
         </div>
     @endif
 
-    <!-- Модальное окно для отложенных сообщений -->
+    {{-- ========== ЭКРАН 13: ОТЛОЖЕННОЕ ПОСЛЕДСТВИЕ ========== --}}
     @if($showDelayedModal && !empty($delayedMessages))
-        <div
-            wire:key="delayed-modal-{{ $game->id }}"
-            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;"
-            wire:click.self="closeDelayedModal"
-        >
-            <div style="background: white; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; margin: 0 auto; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="font-size: 18px; font-weight: 600; color: #1f2937;">✉️ Сообщения</h3>
-                    <button
-                        wire:click="closeDelayedModal"
-                        style="background: none; border: none; font-size: 24px; cursor: pointer; color: #9ca3af;"
-                    >
-                        ×
-                    </button>
+        @php $effect = $delayedMessages[0]; @endphp
+        <div class="delayed-effect-backdrop" wire:click.self="closeDelayedModal" x-on:keydown.escape.window="$wire.closeDelayedModal()">
+            <article class="delayed-effect" role="dialog" aria-modal="true" aria-labelledby="delayed-effect-title" wire:click.stop>
+                <header class="delayed-effect__header">
+                    <x-game.icon name="clock" class="delayed-effect__header-icon" />
+                    <div>
+                        <h2 id="delayed-effect-title">{{ $effect['title'] ?? 'Эхо прошлого решения' }}</h2>
+                        <p>{{ $effect['subtitle'] ?? 'Отложенные последствия проявились' }}</p>
+                    </div>
+                    <button type="button" class="delayed-effect__close" wire:click="closeDelayedModal" aria-label="Закрыть отложенное последствие">×</button>
+                </header>
+                <div class="delayed-effect__divider"></div>
+                <div class="delayed-effect__content">
+                    <dl class="delayed-effect__metadata">
+                        <div><dt>Источник</dt><dd>{{ ($effect['source_month'] ?? null) ? $effect['source_month'] . '. ' . ($effect['source_scene'] ?? '') : 'Ранее принятое решение' }}</dd></div>
+                        <div><dt>Решение</dt><dd>{{ $effect['source_decision'] ?? 'Выбор, сделанный ранее' }}</dd></div>
+                        <div><dt>Прошло времени</dt><dd>{{ $effect['delay_label'] ?? 'Несколько недель' }}</dd></div>
+                        <div><dt>Статус</dt><dd>{{ $effect['status'] ?? 'Проявилось' }}</dd></div>
+                    </dl>
+                    <section class="delayed-effect__narrative">
+                        <p class="delayed-effect__lead">{{ $effect['introduction'] ?? 'Проявились последствия решения, принятого ранее.' }}</p>
+                        @foreach($delayedMessages as $msg)
+                            <p>{{ $msg['message'] }}</p>
+                        @endforeach
+                    </section>
+                    <section class="delayed-effect__impact">
+                        <h3>КАК ЭТО ВЛИЯЕТ НА ТЕКУЩУЮ СИТУАЦИЮ</h3>
+                        <p>Текущая сцена учитывает проявившиеся последствия. Ознакомьтесь с обновлениями и продолжите управление.</p>
+                    </section>
                 </div>
-
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    @foreach($delayedMessages as $index => $message)
-                        <div style="padding: 12px 16px; background: #f3f4f6; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: 600; color: #3b82f6;">
-                                    {{ $message['type'] ?? 'Сообщение' }}
-                                </span>
-                                <span style="font-size: 10px; color: #9ca3af;">
-                                    {{ $message['created_at'] ?? now()->format('d.m.Y H:i') }}
-                                </span>
-                            </div>
-                            <p style="color: #374151; font-size: 14px; line-height: 1.5; margin: 0;">
-                                {{ $message['message'] }}
-                            </p>
-                        </div>
-
-                        @if($index < count($delayedMessages) - 1)
-                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 4px 0;">
-                        @endif
-                    @endforeach
-                </div>
-
-                <button
-                    wire:click="closeDelayedModal"
-                    style="margin-top: 20px; padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; width: 100%;"
-                >
-                    Понятно
-                </button>
-            </div>
+                <footer class="delayed-effect__footer">
+                    <button type="button" class="document-action document-action--secondary" wire:click="closeDelayedModal">Закрыть</button>
+                    <button type="button" class="document-action document-action--primary" wire:click="closeDelayedModal">Продолжить</button>
+                </footer>
+            </article>
         </div>
     @endif
     {{-- Модальное окно предпросмотра материала (экран 06) --}}

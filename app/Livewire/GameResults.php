@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use App\Models\GameHistory;
 use App\Support\PrototypeContent;
+use App\Models\ParameterDefinition;
 class GameResults extends Component
 {
     public Game $game;
@@ -37,6 +38,7 @@ class GameResults extends Component
     public string $scenarioName = '';
     public string $difficulty = '';
     public int $totalSteps = 0;
+
     /** Активная годовая вкладка (экраны 14–16) */
     public string $annualTab = 'year-results';
 
@@ -183,6 +185,9 @@ class GameResults extends Component
         $actorReactions = [];
         $sceneOrder = 0;
         $sceneTitle = '';
+        $situation = '';
+        $hasDelayedEffect = false;
+        $delayedText = '';
         $date = now()->format('d.m.Y H:i');
 
         // Находим игровой ход в этом шаге
@@ -204,6 +209,7 @@ class GameResults extends Component
                 if ($scene) {
                     $sceneOrder = $scene->order;
                     $sceneTitle = $scene->title;
+                    $situation = $scene->situation ?? '';
                 }
             }
 
@@ -244,6 +250,15 @@ class GameResults extends Component
 
             // ========== ЭФФЕКТЫ ==========
             foreach ($event->effects as $effect) {
+                $typeName = $effect->effectType->name ?? '';
+                if ($typeName === 'Отложенное сообщение') {
+                    $d = $effect->effect_data;
+                    if (is_string($d)) $d = json_decode($d, true);
+                    if (is_string($d)) $d = json_decode($d, true);
+                    $hasDelayedEffect = true;
+                    if (!empty($d['message'])) $delayedText = $d['message'];
+                }
+
                 $parsed = $this->parseEffect($effect);
                 if ($parsed['key'] === 'unknown') continue;
 
@@ -311,6 +326,9 @@ class GameResults extends Component
             'month' => $monthName,
             'scene_order' => $sceneOrder,
             'scene_title' => $sceneTitle ?: 'Неизвестная сцена',
+            'situation' => $situation,
+            'has_delayed_effect' => $hasDelayedEffect,
+            'delayed' => $delayedText,
             'date' => $date,
             'choice_description' => $choiceDescription ?: 'Нет данных о выборе',
             'effects' => $effects,
@@ -651,19 +669,206 @@ class GameResults extends Component
     /**
      * Данные годовых экранов (источник — PrototypeContent)
      */
+    /**
+    /**
+     * Данные годовых экранов: статичный каркас + реальные итоги из parametersWithDiff
+     */
     public function getAnnualResults(): array
     {
-        return PrototypeContent::annualResults();
+        $static = PrototypeContent::annualResults();
+
+        // Только валидные показатели (отбрасываем служебные/тестовые ключи, напр. «Бла бла бла»)
+        $validKeys = ParameterDefinition::pluck('name')->toArray();
+
+        $strengthened = [];
+        $weakened = [];
+        $vulnerable = [];
+
+        foreach ($this->parametersWithDiff as $key => $data) {
+            if (!in_array($key, $validKeys, true)) {
+                continue;
+            }
+
+            $diff  = (int) $data['diff'];
+            $final = (int) $data['final'];
+            $goodWhenUp = $this->isPositiveChangeGood($key);
+
+            $improved = $goodWhenUp ? $diff > 0 : $diff < 0;
+            $worsened = $goodWhenUp ? $diff < 0 : $diff > 0;
+
+            if ($improved) {
+                $strengthened[] = $key;
+            }
+            if ($worsened) {
+                $weakened[] = $key;
+            }
+            if ($final < 50) {
+                $vulnerable[] = $key;
+            }
+        }
+
+        return array_merge($static, [
+            'scenesCompleted' => $this->totalSteps,
+            'strengthened' => $strengthened ?: ['Существенных улучшений не зафиксировано'],
+            'weakened' => $weakened ?: ['Существенных ухудшений не зафиксировано'],
+            'vulnerable' => $vulnerable ?: ['Критически слабых зон не отмечено'],
+        ]);
+    }
+
+    /**
+     * Для каких показателей рост — это хорошо.
+     * Для «Конфликтная напряженность» и «Риск управленческого сбоя» рост — это плохо.
+     */
+    private function isPositiveChangeGood(string $key): bool
+    {
+        return !in_array($key, ['Конфликтная напряженность', 'Риск управленческого сбоя'], true);
     }
 
     public function getManagementReview(): array
     {
-        return PrototypeContent::managementReview();
+        $steps = $this->historyData;
+        $totalDecisions = count($steps);
+
+        $totalActorReactions = collect($steps)->sum(fn ($s) => count($s['actor_reactions']));
+        $positive = collect($steps)->flatMap(fn ($s) => $s['effects'])->filter(fn ($e) => $e['is_positive'])->count();
+        $negative = collect($steps)->flatMap(fn ($s) => $s['effects'])->filter(fn ($e) => $e['is_negative'])->count();
+
+        $improved = collect($this->parametersWithDiff)->filter(fn ($d) => $d['diff'] > 0);
+        $worsened = collect($this->parametersWithDiff)->filter(fn ($d) => $d['diff'] < 0);
+
+        // Сопоставление месяцев с хроникой, чтобы «Открыть в хронике» вело к реальной записи
+        $chronicleByMonth = collect($this->getChronicle()['entries'] ?? [])->keyBy('month');
+
+        // Поворотные решения — шаги с наибольшим числом реакций акторов
+        $turningPoints = collect($steps)
+            ->map(fn ($s, $i) => ['i' => $i, 'r' => count($s['actor_reactions']), 's' => $s])
+            ->filter(fn ($t) => $t['r'] > 0)
+            ->sortByDesc('r')
+            ->take(4)
+            ->map(function ($t) use ($chronicleByMonth) {
+                $s = $t['s'];
+                $reaction = $s['actor_reactions'][0] ?? null;
+                $effect = $s['effects'][0] ?? null;
+                return [
+                    'id' => $chronicleByMonth[$s['month']]['id'] ?? ('step-' . ($t['i'] + 1)),
+                    'month' => $s['month'],
+                    'situation' => $s['scene_title'],
+                    'decision' => $s['choice_description'],
+                    'result' => $effect ? $effect['key'] . ' ' . $effect['display'] : 'Решение применено',
+                    'consequence' => $reaction ? $reaction['actor'] . ' — ' . $reaction['event'] : 'Реакция аппарата',
+                ];
+            })->values()->toArray();
+
+        $strengths = $improved->map(fn ($d, $key) => [
+            'title' => 'Укрепление: ' . $key,
+            'description' => 'Изменение за год: ' . $d['diff_text'] . '. Положительная динамика.',
+        ])->values()->toArray();
+
+        $risks = $worsened->map(fn ($d, $key) => [
+            'title' => 'Риск: ' . $key,
+            'description' => 'Изменение за год: ' . $d['diff_text'] . '. Требует внимания.',
+        ])->values()->toArray();
+
+        if (empty($strengths)) {
+            $strengths = [['title' => 'Удержание стабильности', 'description' => 'Часть параметров удержана без ухудшения.']];
+        }
+        if (empty($risks)) {
+            $risks = [['title' => 'Отсутствие выраженных ухудшений', 'description' => 'Значимых ухудшений за год не зафиксировано.']];
+        }
+
+        $profileTitle = $totalActorReactions > $totalDecisions
+            ? 'Оперативный руководитель с высокой вовлечённостью'
+            : 'Оперативный руководитель';
+
+        $profileNarrative = [
+            "За год принято решений: {$totalDecisions}. Суммарных реакций акторов: {$totalActorReactions}.",
+            "Положительных изменений параметров: {$positive}, отрицательных: {$negative}.",
+            $improved->count() > 0 ? 'Укреплены: ' . $improved->keys()->implode(', ') . '.' : 'Выраженных укреплений не зафиксировано.',
+            $worsened->count() > 0 ? 'Ослабли: ' . $worsened->keys()->implode(', ') . '.' : 'Значимых ухудшений не зафиксировано.',
+        ];
+
+        $markers = [
+            'Решений: ' . $totalDecisions,
+            'Реакций акторов: ' . $totalActorReactions,
+            'Улучшено параметров: ' . $improved->count(),
+        ];
+
+        $keyPattern = [
+            "Положительных изменений: {$positive}, отрицательных: {$negative}.",
+            $worsened->count() > $improved->count()
+                ? 'Динамика указывает на накопление системных рисков.'
+                : 'Динамика в целом устойчивая, отдельные параметры требуют внимания.',
+        ];
+
+        $recommendations = $worsened->map(fn ($d, $key) => [
+            'title' => 'Восстановить: ' . $key,
+            'description' => 'Вернуть параметр к устойчивому уровню через процедурные решения.',
+        ])->values()->toArray();
+        if (empty($recommendations)) {
+            $recommendations = [['title' => 'Закрепить процедуры', 'description' => 'Зафиксировать успешные практики в регулярных процедурах.']];
+        }
+
+        $priorities = $worsened->keys()->take(3)->values()->toArray();
+        if (empty($priorities)) {
+            $priorities = ['Устойчивые процедуры'];
+        }
+
+        $prioritySummary = $worsened->count() > 0
+            ? 'Главная задача — восстановить ослабшие параметры: ' . $worsened->keys()->implode(', ') . '.'
+            : 'Главная задача — закрепить устойчивые процедуры.';
+
+        return [
+            'context' => 'Сценарий «' . $this->scenarioName . '» · Глава округа · ' . $totalDecisions . ' сцен',
+            'profileTitle' => $profileTitle,
+            'profileNarrative' => $profileNarrative,
+            'markers' => $markers,
+            'strengths' => $strengths,
+            'risks' => $risks,
+            'turningPoints' => $turningPoints,
+            'keyPattern' => $keyPattern,
+            'recommendations' => $recommendations,
+            'priorities' => $priorities,
+            'prioritySummary' => $prioritySummary,
+            'sidebar' => [
+                'profile' => ['title' => $profileTitle, 'items' => $markers],
+                'strength' => $strengths[0],
+                'risk' => $risks[0],
+                'recommendation' => $recommendations[0],
+            ],
+        ];
     }
 
     public function getChronicle(): array
     {
-        return PrototypeContent::annualChronicle();
+        $entries = [];
+        foreach ($this->historyData as $index => $step) {
+            $actors = collect($step['actor_reactions'])->pluck('actor')->unique()->values()->toArray();
+            $effectsSummary = collect($step['effects'])
+                ->map(fn ($e) => $e['key'] . ' ' . $e['display'])
+                ->implode(', ');
+
+            $entries[] = [
+                'id' => 'step-' . ($index + 1),
+                'month' => $step['month'],
+                'scene' => $step['scene_order'],
+                'title' => $step['scene_title'],
+                'situation' => '',
+                'decision' => $step['choice_description'],
+                'result' => $effectsSummary ?: 'Решение применено.',
+                'delayed' => '',
+                'related' => '',
+                'relatedId' => null,
+                'recommendation' => '',
+                'actors' => $actors,
+                'turningPoint' => count($step['actor_reactions']) > 0,
+                'hasDelayedEffect' => false,
+            ];
+        }
+
+        return [
+            'finalState' => $this->statistics['scenario_name'] ?? '',
+            'entries' => $entries,
+        ];
     }
 
     /**
