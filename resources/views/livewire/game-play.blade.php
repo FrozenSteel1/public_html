@@ -343,13 +343,18 @@
                                             <h2>НОВЫЕ ВХОДЯЩИЕ</h2>
                                             <ul>
                                                 @foreach($inboxMessages as $message)
-                                                    <li>
+                                                    @php $read = $this->isInboxRead($message['id']); @endphp
+                                                    <li role="button"
+                                                        tabindex="0"
+                                                        wire:click="selectInboxMessage({{ $message['id'] }})"
+                                                        wire:keydown.enter="selectInboxMessage({{ $message['id'] }})"
+                                                        aria-label="Открыть сообщение: {{ $message['actor'] }} актор. {{ $message['subject'] }}. Статус: {{ $read ? 'Прочитано' : 'Новое' }}">
                                                         <x-game.icon name="mail" class="result-message__icon" />
                                                         <span>
-                                                            <strong>{{ $message['actor'] }} актор</strong>
-                                                            <span>{{ $message['subject'] }}</span>
-                                                        </span>
-                                                        <span class="result-message__status">Новое</span>
+                                                         <strong>{{ $message['actor'] }} актор</strong>
+                                                         <span>{{ $message['subject'] }}</span>
+                                                     </span>
+                                                        <span class="result-message__status @if($read) result-message__status--read @endif">{{ $read ? 'Прочитано' : 'Новое' }}</span>
                                                     </li>
                                                 @endforeach
                                             </ul>
@@ -1055,35 +1060,94 @@
         </aside>
     </div>
 
-    {{-- ========== ЭКРАН 10: ВХОДЯЩЕЕ СООБЩЕНИЕ (С INLINE-СТИЛЯМИ) ========== --}}
-    @if($showMessageModal && !empty($currentModalMessage))
-        @php
-            $msgBody = $currentModalMessage['text'] ?? $currentModalMessage['message'] ?? 'Сообщение отсутствует';
-        @endphp
+        {{-- ========== ЭКРАН 10: ВХОДЯЩЕЕ СООБЩЕНИЕ ========== --}}
+        @if($showMessageModal && !empty($currentModalMessage))
+            @php
+                $msgText     = $currentModalMessage['text'] ?? $currentModalMessage['message'] ?? 'Сообщение отсутствует';
+                $msgSender   = $currentModalMessage['actor'] ?? 'Актор';
+                $msgSource   = $currentModalMessage['sender'] ?? 'Канцелярия округа';
+                $msgSubject  = $currentModalMessage['subject'] ?? (mb_strlen($msgText) > 80 ? mb_substr($msgText, 0, 80) . '…' : $msgText);
+                $msgPriority = $currentModalMessage['priority'] ?? 'Средний';
+                $msgTime     = $currentModalMessage['time'] ?? $currentModalMessage['timestamp'] ?? now()->format('H:i');
+                if (preg_match('/(\d{1,2}:\d{2})/', (string) $msgTime, $m)) {
+                    $msgTime = $m[1];
+                }
+                $priorityDot = match (true) {
+                    str_contains($msgPriority, 'Высок') || str_contains($msgPriority, 'Критич') => 'incoming-message__priority-dot--high',
+                    str_contains($msgPriority, 'Низк') => 'incoming-message__priority-dot--low',
+                    default => '',
+                };
+            @endphp
 
-        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 99999;"
-             wire:click="closeMessageModal"
-             x-on:keydown.escape.window="$wire.closeMessageModal()">
-
-            <div style="background: white; border-radius: 12px; max-width: 500px; width: 90%; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center;"
-                 wire:click.stop>
-
-                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 16px;">ℹ️ Сообщение</h2>
-
-                <div style="background: #f3f4f6; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
-                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
-                        {{ $msgBody }}
-                    </p>
+            {{-- Тост «Новое письмо» (как в макете — поверх шапки) --}}
+            @if(!$messageModalFromInbox)
+                <div class="message-toast" role="status" x-data="{ visible: true }" x-show="visible">
+                    <div class="message-toast__open">
+                        <x-game.icon name="mail" class="message-toast__icon" />
+                        <span>
+                     <strong>Новое письмо</strong>
+                     <span>{{ $msgSender }} направил сообщение</span>
+                 </span>
+                    </div>
+                    <button type="button" class="message-toast__dismiss" x-on:click="visible = false" aria-label="Скрыть уведомление о новом письме">×</button>
                 </div>
+            @endif
 
-                <button type="button"
-                        wire:click="closeMessageModal"
-                        style="background-color: #2563eb; color: white; padding: 12px 32px; border-radius: 8px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    Продолжить
-                </button>
+            {{-- Модалка входящего сообщения --}}
+            <div class="incoming-message-backdrop"
+                 wire:click.self="closeMessageModal"
+                 x-data="{
+              init() { document.body.classList.add('message-modal-open'); },
+              destroy() { document.body.classList.remove('message-modal-open'); }
+          }"
+                 x-on:keydown.escape.window="$wire.closeMessageModal()">
+                <article class="incoming-message" role="dialog" aria-modal="true" aria-labelledby="incoming-message-title">
+                    <header class="incoming-message__header">
+                        <span aria-hidden="true"></span>
+                        <h2 id="incoming-message-title">Входящее сообщение</h2>
+                        <button type="button" class="incoming-message__close" wire:click="closeMessageModal" aria-label="Закрыть входящее сообщение">×</button>
+                    </header>
+                    <div class="incoming-message__divider" aria-hidden="true"></div>
+                    <div class="incoming-message__content">
+                        <dl class="incoming-message__metadata">
+                            <dt>Отправитель:</dt>
+                            <dd>{{ $msgSender }}</dd>
+                            <dt>Источник:</dt>
+                            <dd>{{ $msgSource }}</dd>
+                            <dt>Тема:</dt>
+                            <dd>{{ $msgSubject }}</dd>
+                            <dt>Приоритет:</dt>
+                            <dd><span class="incoming-message__priority-dot {{ $priorityDot }}" aria-hidden="true"></span>{{ $msgPriority }}</dd>
+                            <dt>Время:</dt>
+                            <dd>{{ $msgTime }}</dd>
+                        </dl>
+                        <div class="incoming-message__body">
+                            @foreach(explode("\n", $msgText) as $paragraph)
+                                @if(trim($paragraph) !== '')
+                                    <p>{{ trim($paragraph) }}</p>
+                                @endif
+                            @endforeach
+                        </div>
+                        @if(!empty($currentModalMessage['deadline']))
+                            <p class="incoming-message__deadline">
+                                <x-game.icon name="clock" class="incoming-message__deadline-icon" />
+                                {{ $currentModalMessage['deadline'] }}
+                            </p>
+                        @endif
+                    </div>
+                    <footer class="incoming-message__footer">
+                        @if($messageModalFromInbox)
+                            <button type="button" class="document-action document-action--secondary" wire:click="closeMessageModal">Закрыть</button>
+                            <button type="button" class="document-action document-action--primary" wire:click="markCurrentMessageRead">Отметить как прочитанное</button>
+                        @else
+                            <button type="button" class="document-action document-action--secondary" wire:click="closeMessageModal">Закрыть</button>
+                            <button type="button" class="document-action document-action--secondary" wire:click="markCurrentMessageRead">Отметить как прочитанное</button>
+                            <button type="button" class="document-action document-action--primary" wire:click="closeMessageModalToScene">Перейти к сцене</button>
+                        @endif
+                    </footer>
+                </article>
             </div>
-        </div>
-    @endif
+        @endif
 
     {{-- ========== ЭКРАН 13: ОТЛОЖЕННОЕ ПОСЛЕДСТВИЕ ========== --}}
     @if($showDelayedModal && !empty($delayedMessages))

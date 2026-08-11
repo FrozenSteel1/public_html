@@ -2559,7 +2559,6 @@ body.message-modal-open {
 .incoming-message__priority-dot--low {
     background: var(--color-success);
 }
-
 .incoming-message__footer {
   display: flex;
   justify-content: flex-end;
@@ -2936,7 +2935,21 @@ body.message-modal-open {
   font-weight: 700;
   text-transform: uppercase;
 }
-
+.result-message__status--read {
+    background: var(--color-paper-muted);
+    color: var(--color-text-soft);
+}
+.result-messages li[role="button"] {
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast) var(--easing-standard),
+        background-color var(--transition-fast) var(--easing-standard);
+}
+.result-messages li[role="button"]:hover,
+.result-messages li[role="button"]:focus-visible {
+    border-color: var(--color-gold-strong);
+    background: var(--color-paper);
+}
 .result-actions {
   justify-content: flex-end;
   gap: 10px;

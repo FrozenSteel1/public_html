@@ -31,8 +31,12 @@ class GamePlay extends Component
     public array $pendingResult = [];
     public bool $showMessageModal = false;
     public array $currentModalMessage = [];
-    /** Откуда открыта модалка сообщения: очередь хода или повторное открытие из «Входящих» */
+    /** Очередь нормализованных сообщений хода для модалки (экран 10) */
+    public array $messageQueue = [];
+    /** Откуда открыта модалка: очередь хода или повторное открытие из «Входящих» */
     public bool $messageModalFromInbox = false;
+    /** Откуда открыта модалка сообщения: очередь хода или повторное открытие из «Входящих» */
+
     public array $sceneActors = [];
     public array $gameHistoryWithMonths = [];
     public int $timerKey = 0;
@@ -583,9 +587,11 @@ class GamePlay extends Component
             // Сцена переключается в любом случае; модалка показывается поверх новой сцены.
             $this->applyGameResult($result);
 
+
             // Если есть сообщения — показываем модалку поверх новой сцены (очередь, по одному)
-            if (count($this->gameMessages) > 0) {
-                $this->currentModalMessage = $this->gameMessages[0];
+            if (count($this->inboxMessages) > 0) {
+                $this->messageQueue = $this->inboxMessages;
+                $this->currentModalMessage = $this->messageQueue[0];
                 $this->showMessageModal = true;
                 $this->messageShown = false;
                 $this->messageModalFromInbox = false;
@@ -611,9 +617,9 @@ class GamePlay extends Component
         }
 
         // Очередь хода: если сообщения ещё есть — показываем следующее друг за другом
-        if (count($this->gameMessages) > 1) {
-            array_shift($this->gameMessages);
-            $this->currentModalMessage = $this->gameMessages[0];
+        if (count($this->messageQueue) > 1) {
+            array_shift($this->messageQueue);
+            $this->currentModalMessage = $this->messageQueue[0];
             $this->showMessageModal = true;
 
             return;
@@ -624,12 +630,40 @@ class GamePlay extends Component
         $this->showMessageModal = false;
         $this->messageShown = true;
         $this->currentModalMessage = [];
+        $this->messageQueue = [];
         $this->gameMessages = [];
         $this->effectManager->clearMessages();
 
         $this->gameplayTab = 'decisions';
         $this->decisionsDoc = 'result';
     }
+
+    /** Кнопка «Отметить как прочитанное» (экран 10) */
+    public function markCurrentMessageRead(): void
+    {
+        $id = $this->currentModalMessage['id'] ?? null;
+        if ($id !== null && !in_array($id, $this->readInboxIds, true)) {
+            $this->readInboxIds[] = $id;
+        }
+
+        $this->closeMessageModal();
+    }
+
+    /** Кнопка «Перейти к сцене» (экран 10): закрыть очередь и сразу вернуться к сцене */
+    public function closeMessageModalToScene(): void
+    {
+        $this->showMessageModal = false;
+        $this->messageShown = true;
+        $this->currentModalMessage = [];
+        $this->messageQueue = [];
+        $this->gameMessages = [];
+        $this->effectManager->clearMessages();
+
+        $this->decisionsDoc = 'decisions';
+        $this->gameplayTab = 'scenario';
+    }
+
+
 
     private function applyGameResult(array $result): void
     {
