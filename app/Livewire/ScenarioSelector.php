@@ -15,6 +15,16 @@ class ScenarioSelector extends Component
     public ?int $pendingScenarioId = null;
     public ?array $activeGame = null;
     public bool $showModal = false;
+    public int $selectedScenarioId = 0;
+    public ?string $toast = null;
+
+    /** Сложности по макету UI V1 (экран 01): подпись + «уровень» шкалы */
+    public const DIFFICULTIES = [
+        'easy'   => ['label' => 'Слабая',      'level' => 2],
+        'medium' => ['label' => 'Средняя',     'level' => 3],
+        'hard'   => ['label' => 'Сильная',     'level' => 4],
+        'expert' => ['label' => 'Критическая', 'level' => 5],
+    ];
 
     public function mount(): void
     {
@@ -22,13 +32,17 @@ class ScenarioSelector extends Component
         $this->checkActiveGame();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->loadScenarios();
+    }
+
     /**
      * Загрузить сценарии
      */
     public function loadScenarios(): void
     {
-        $query = Scenario::with('presets')
-            ->orderBy('name');
+        $query = Scenario::with('presets')->orderBy('name');
 
         if (!empty($this->search)) {
             $query->where('name', 'like', '%' . $this->search . '%');
@@ -36,19 +50,74 @@ class ScenarioSelector extends Component
 
         $this->scenarios = $query->get()->map(function ($scenario) {
             return [
-                'id' => $scenario->id,
-                'name' => $scenario->name,
-                'description' => $scenario->description,
-                'difficulty' => $scenario->difficulty,
-                'presets' => $scenario->presets->map(function ($preset) {
-                    return [
-                        'difficulty' => $preset->difficulty,
-                        'settings' => $preset->settings,
-                    ];
-                })->toArray(),
+                'id'           => $scenario->id,
+                'name'         => $scenario->name,
+                'description'  => $scenario->description,
+                'difficulty'   => $scenario->difficulty,
+                'presets'      => $scenario->presets->map(fn ($preset) => [
+                    'difficulty' => $preset->difficulty,
+                    'settings'   => $preset->settings,
+                ])->toArray(),
                 'scenes_count' => $scenario->scenes()->count(),
             ];
         })->toArray();
+
+        // Выбранный сценарий — первый доступный (имеющий пресеты)
+        if (!collect($this->scenarios)->firstWhere('id', $this->selectedScenarioId)) {
+            $first = collect($this->scenarios)->first(fn ($s) => count($s['presets']) > 0)
+                ?? collect($this->scenarios)->first();
+            $this->selectedScenarioId = $first['id'] ?? 0;
+        }
+
+        // Сложность по умолчанию — первый доступный пресет сценария
+        foreach ($this->scenarios as $scenario) {
+            if (!isset($this->selectedDifficulties[$scenario['id']])) {
+                $this->selectedDifficulties[$scenario['id']] = $scenario['presets'][0]['difficulty'] ?? 'easy';
+            }
+        }
+    }
+
+    /**
+     * Выбор сценария карточкой в сетке (только доступные)
+     */
+    public function selectScenario(int $scenarioId): void
+    {
+        $scenario = collect($this->scenarios)->firstWhere('id', $scenarioId);
+
+        if (!$scenario || count($scenario['presets']) === 0) {
+            return; // «СКОРО» — недоступно
+        }
+
+        $this->selectedScenarioId = $scenarioId;
+    }
+
+    /**
+     * Выбор сложности (только из доступных пресетов сценария)
+     */
+    public function selectDifficulty(string $difficulty): void
+    {
+        if (!$this->selectedScenarioId || !array_key_exists($difficulty, self::DIFFICULTIES)) {
+            return;
+        }
+
+        if (!in_array($difficulty, $this->getAvailableDifficulties($this->selectedScenarioId), true)) {
+            return;
+        }
+
+        $this->selectedDifficulties[$this->selectedScenarioId] = $difficulty;
+    }
+
+    /**
+     * Предпросмотр (поведение макета — тост)
+     */
+    public function preview(): void
+    {
+        $this->toast = 'Предпросмотр сценария будет добавлен позже.';
+    }
+
+    public function clearToast(): void
+    {
+        $this->toast = null;
     }
 
     /**
@@ -67,12 +136,12 @@ class ScenarioSelector extends Component
             })->first();
 
             $this->activeGame = [
-                'id' => $game->id,
-                'scenario_name' => $scenario->name ?? 'Неизвестный сценарий',
+                'id'                  => $game->id,
+                'scenario_name'       => $scenario->name ?? 'Неизвестный сценарий',
                 'current_scene_title' => $game->currentScene->title ?? 'Продолжить',
-                'created_at' => $game->created_at->format('d.m.Y H:i'),
-                'difficulty' => $game->difficulty,
-                'steps' => $game->gameHistories()->count(),
+                'created_at'          => $game->created_at->format('d.m.Y H:i'),
+                'difficulty'          => $game->difficulty,
+                'steps'               => $game->gameHistories()->count(),
             ];
         } else {
             $this->activeGame = null;
@@ -84,12 +153,14 @@ class ScenarioSelector extends Component
      */
     public function tryStartGame(int $scenarioId): void
     {
-        // Если есть активная игра - показываем модальное окно
+        if (!$scenarioId) {
+            return;
+        }
+
         if ($this->activeGame) {
             $this->pendingScenarioId = $scenarioId;
             $this->showModal = true;
         } else {
-            // Если нет активной игры - сразу стартуем
             $this->startNewGame($scenarioId);
         }
     }
@@ -101,7 +172,6 @@ class ScenarioSelector extends Component
     {
         $difficulty = $this->selectedDifficulties[$scenarioId] ?? 'easy';
 
-        // Завершаем активную игру если есть
         if ($this->activeGame) {
             Game::where('user_id', Auth::id())
                 ->where('status', 'in_progress')
@@ -126,9 +196,8 @@ class ScenarioSelector extends Component
         if ($this->activeGame) {
             $this->showModal = false;
             $this->pendingScenarioId = null;
-            redirect()->route('game.continue', [
-                'gameId' => $this->activeGame['id'],
-            ]);
+
+            redirect()->route('game.continue', ['gameId' => $this->activeGame['id']]);
         }
     }
 
@@ -142,7 +211,7 @@ class ScenarioSelector extends Component
     }
 
     /**
-     * Получить доступные сложности для сценария
+     * Доступные сложности для сценария (из пресетов)
      */
     public function getAvailableDifficulties(int $scenarioId): array
     {
@@ -152,45 +221,50 @@ class ScenarioSelector extends Component
             return [];
         }
 
-        return array_map(function ($preset) {
-            return $preset['difficulty'];
-        }, $scenario['presets']);
+        return array_map(fn ($preset) => $preset['difficulty'], $scenario['presets']);
     }
 
     /**
-     * Получить цвет для сложности
-     */
-    public function getDifficultyColor(string $difficulty): string
-    {
-        return match($difficulty) {
-            'easy' => 'bg-green-100 text-green-800',
-            'medium' => 'bg-yellow-100 text-yellow-800',
-            'hard' => 'bg-orange-100 text-orange-800',
-            'expert' => 'bg-red-100 text-red-800',
-            'custom' => 'bg-purple-100 text-purple-800',
-            default => 'bg-gray-100 text-gray-800',
-        };
-    }
-
-    /**
-     * Получить название сложности на русском
+     * Название сложности по макету (решение A)
      */
     public function getDifficultyLabel(string $difficulty): string
     {
-        return match($difficulty) {
-            'easy' => 'Лёгкий',
-            'medium' => 'Средний',
-            'hard' => 'Сложный',
-            'expert' => 'Экспертный',
-            'custom' => 'Пользовательский',
-            default => $difficulty,
+        return self::DIFFICULTIES[$difficulty]['label']
+            ?? ($difficulty === 'custom' ? 'Пользовательский' : $difficulty);
+    }
+
+    public function getDifficultyLevel(string $difficulty): int
+    {
+        return self::DIFFICULTIES[$difficulty]['level'] ?? 3;
+    }
+
+    /**
+     * Цвет бейджа сложности (оставлен для обратной совместимости со старой вью)
+     */
+    public function getDifficultyColor(string $difficulty): string
+    {
+        return match ($difficulty) {
+            'easy'   => 'bg-green-100 text-green-800',
+            'medium' => 'bg-yellow-100 text-yellow-800',
+            'hard'   => 'bg-orange-100 text-orange-800',
+            'expert' => 'bg-red-100 text-red-800',
+            'custom' => 'bg-purple-100 text-purple-800',
+            default  => 'bg-gray-100 text-gray-800',
         };
     }
 
     public function render()
     {
-        return view('livewire.scenario-selector')
-            ->layout('layouts.app')
+        $selected = collect($this->scenarios)->firstWhere('id', $this->selectedScenarioId);
+        $others   = collect($this->scenarios)
+            ->filter(fn ($s) => $s['id'] !== $this->selectedScenarioId)
+            ->values();
+
+        return view('livewire.scenario-selector', [
+            'selected' => $selected,
+            'others'   => $others,
+        ])
+            ->layout('layouts.game')
             ->title('Выбор сценария');
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use App\Models\GameHistory;
+use App\Support\PrototypeContent;
 class GameResults extends Component
 {
     public Game $game;
@@ -36,7 +37,22 @@ class GameResults extends Component
     public string $scenarioName = '';
     public string $difficulty = '';
     public int $totalSteps = 0;
+    /** Активная годовая вкладка (экраны 14–16) */
+    public string $annualTab = 'year-results';
 
+    /** Состояние хроники года (экран 16) */
+    public string $chronicleFilter = 'all';
+    public string $chronicleActorFilter = 'all';
+    public string $chronicleSort = 'chronological';
+    public array $expandedChronicleIds = ['january-first-signal'];
+    public ?string $highlightedChronicleId = null;
+    public ?string $chronicleTargetId = null;
+
+    /** Подтверждение переигровки */
+    public bool $replayConfirmationOpen = false;
+
+    /** ID сценария (для переигровки) */
+    public int $scenarioId = 0;
     public function mount(int $gameId): void
     {
         $this->game = Game::with([
@@ -87,6 +103,7 @@ class GameResults extends Component
                 $scenario = $choice->scene->scenario;
                 if ($scenario) {
                     $scenarioName = $scenario->name;
+                    $this->scenarioId = $scenario->id;
                 }
             }
         }
@@ -524,11 +541,181 @@ class GameResults extends Component
     {
         return redirect()->route('user.games');
     }
+    /**
+     * Переключение годовых вкладок (экраны 14–16)
+     */
+    public function setAnnualTab(string $tab): void
+    {
+        if (!in_array($tab, ['year-results', 'management-review', 'year-chronicle'], true)) {
+            return;
+        }
+
+        $this->annualTab = $tab;
+        $this->chronicleTargetId = null;
+        $this->highlightedChronicleId = null;
+    }
+
+    /**
+     * «Открыть в хронике ›» из разбора управления (экран 15 → 16)
+     */
+    public function openChronicleFromReview(string $entryId): void
+    {
+        $this->annualTab = 'year-chronicle';
+        $this->chronicleFilter = 'all';
+        $this->chronicleActorFilter = 'all';
+        $this->chronicleTargetId = $entryId;
+        $this->highlightedChronicleId = $entryId;
+        if (!in_array($entryId, $this->expandedChronicleIds, true)) {
+            $this->expandedChronicleIds[] = $entryId;
+        }
+        $this->scrollToChronicleEntry($entryId);
+    }
+
+    /**
+     * Развернуть/свернуть запись хроники
+     */
+    public function toggleChronicleEntry(string $entryId): void
+    {
+        $index = array_search($entryId, $this->expandedChronicleIds, true);
+        if ($index === false) {
+            $this->expandedChronicleIds[] = $entryId;
+        } else {
+            unset($this->expandedChronicleIds[$index]);
+            $this->expandedChronicleIds = array_values($this->expandedChronicleIds);
+        }
+        $this->chronicleTargetId = null;
+        $this->highlightedChronicleId = null;
+    }
+
+    /**
+     * Переход к связанному событию хроники
+     */
+    public function goToLinkedEntry(string $entryId): void
+    {
+        $this->chronicleFilter = 'all';
+        $this->chronicleActorFilter = 'all';
+        if (!in_array($entryId, $this->expandedChronicleIds, true)) {
+            $this->expandedChronicleIds[] = $entryId;
+        }
+        $this->chronicleTargetId = $entryId;
+        $this->highlightedChronicleId = $entryId;
+        $this->scrollToChronicleEntry($entryId);
+    }
+
+    public function resetChronicleFilters(): void
+    {
+        $this->chronicleFilter = 'all';
+        $this->chronicleActorFilter = 'all';
+        $this->chronicleSort = 'chronological';
+        $this->chronicleTargetId = null;
+        $this->highlightedChronicleId = null;
+    }
+
+    /**
+     * Прокрутка к записи хроники после морфинга Livewire
+     */
+    private function scrollToChronicleEntry(string $entryId): void
+    {
+        $this->js(<<<JS
+            setTimeout(() => {
+                const body = document.querySelector('.document-sheet--year-chronicle .chronicle-document__body');
+                const target = body ? body.querySelector('[data-chronicle-entry-id="{$entryId}"]') : null;
+                if (body && target) {
+                    const top = target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12;
+                    body.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            }, 60);
+        JS);
+    }
+
+    /**
+     * Подтверждение переигровки: возврат к выбору сценария (текущая игра уже завершена)
+     */
+    public function openReplayConfirmation(): void
+    {
+        $this->replayConfirmationOpen = true;
+    }
+
+    public function closeReplayConfirmation(): void
+    {
+        $this->replayConfirmationOpen = false;
+    }
+
+    public function confirmReplay(): void
+    {
+        $this->replayConfirmationOpen = false;
+
+        redirect()->route('scenarios');
+    }
+
+    /**
+     * Данные годовых экранов (источник — PrototypeContent)
+     */
+    public function getAnnualResults(): array
+    {
+        return PrototypeContent::annualResults();
+    }
+
+    public function getManagementReview(): array
+    {
+        return PrototypeContent::managementReview();
+    }
+
+    public function getChronicle(): array
+    {
+        return PrototypeContent::annualChronicle();
+    }
+
+    /**
+     * Видимые записи хроники с учётом фильтров и порядка
+     */
+    public function getVisibleChronicleEntries(): array
+    {
+        $entries = collect($this->getChronicle()['entries'] ?? []);
+
+        $entries = $entries->filter(function ($entry) {
+            if ($this->chronicleFilter === 'turning' && empty($entry['turningPoint'])) {
+                return false;
+            }
+            if ($this->chronicleFilter === 'delayed' && empty($entry['hasDelayedEffect'])) {
+                return false;
+            }
+            return $this->chronicleActorFilter === 'all' || in_array($this->chronicleActorFilter, $entry['actors'] ?? [], true);
+        });
+
+        if ($this->chronicleSort === 'reverse') {
+            $entries = $entries->reverse();
+        }
+
+        return $entries->values()->toArray();
+    }
+
+    /**
+     * Сводка хроники (экран 16)
+     */
+    public function getChronicleSummary(): array
+    {
+        $entries = collect($this->getChronicle()['entries'] ?? []);
+
+        return [
+            'scenes' => $entries->count(),
+            'decisions' => $entries->count(),
+            'turning' => $entries->filter(fn ($e) => !empty($e['turningPoint']))->count(),
+            'delayed' => $entries->filter(fn ($e) => !empty($e['hasDelayedEffect']))->count(),
+            'shown' => count($this->getVisibleChronicleEntries()),
+            'finalState' => $this->getChronicle()['finalState'] ?? '',
+        ];
+    }
+
+    public function isChronicleExpanded(string $entryId): bool
+    {
+        return in_array($entryId, $this->expandedChronicleIds, true);
+    }
 
     public function render()
     {
         return view('livewire.game-results')
-            ->layout('layouts.app')
+            ->layout('layouts.game')
             ->title('Результаты игры');
     }
 }
