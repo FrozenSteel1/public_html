@@ -1,10 +1,10 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Scene extends Model
 {
@@ -16,39 +16,40 @@ class Scene extends Model
         'additional_data',
     ];
 
-    protected $casts = [
-        'additional_data' => 'array',
-    ];
+    // УБИРАЕМ $casts
+    // protected $casts = ['additional_data' => 'array'];
 
-    // Связь с таблицей scenarios (принадлежит сценарию)
     public function scenario(): BelongsTo
     {
         return $this->belongsTo(Scenario::class);
     }
 
-    // Связь с таблицей choices (одна сцена имеет много выборов)
     public function choices(): HasMany
     {
         return $this->hasMany(Choice::class)->orderBy('order');
     }
-    /**
-     * Получить акторов, участвующих в сцене
-     * (из additional_data или через связи)
-     */
+
+    protected function additionalData(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                $data = $value;
+                if (is_string($data)) {
+                    $decoded = json_decode($data, true);
+                    if (json_last_error() === JSON_ERROR_NONE) $data = $decoded;
+                }
+                if (is_string($data)) {
+                    $decoded = json_decode($data, true);
+                    if (json_last_error() === JSON_ERROR_NONE) $data = $decoded;
+                }
+                return is_array($data) ? $data : [];
+            }
+        );
+    }
+
     public function getActors(): array
     {
-        // Если в additional_data есть список акторов
-        $data = $this->additional_data;
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-
-        // Проверяем, есть ли в additional_data поле 'actors'
-        if (is_array($data) && isset($data['actors'])) {
-            return $data['actors'];
-        }
-
-        // Если нет - возвращаем всех акторов или пустой массив
-        return [];
+        $data = $this->additional_data; // Уже гарантированно массив!
+        return $data['actors'] ?? [];
     }
 }

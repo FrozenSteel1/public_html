@@ -106,12 +106,14 @@ class GameService
     /**
      * Сделать выбор
      */
+    /**
+     * Сделать выбор
+     */
     public function makeChoice(int $gameId, int $choiceId): array
     {
         Log::info('makeChoice начат', ['game_id' => $gameId, 'choice_id' => $choiceId]);
 
         $game = $this->getGame($gameId);
-
         $choice = Choice::with(['event.effects.effectType'])->find($choiceId);
 
         if (!$choice) {
@@ -138,24 +140,11 @@ class GameService
             'source' => GameHistory::SOURCE_PLAYER,
         ]);
 
-        // Проверяем триггеры акторов
+        // Проверяем триггеры акторов (передаем $newState по ссылке, чтобы она обновилась внутри метода)
         $triggeredEvents = $this->processActorTriggers($game, $newState);
 
-        // Применяем события от акторов
-        foreach ($triggeredEvents as $trigger) {
-            $event = Event::with('effects.effectType')->find($trigger['event_id']);
-            if ($event) {
-                $currentState = $this->applyEventEffects($game, $currentState, $event);
-
-                // ========== ЗАПИСЫВАЕМ В ИСТОРИЮ - РЕАКЦИЯ АКТОРА ==========
-                GameHistory::create([
-                    'game_id' => $gameId,
-                    'event_id' => $event->id,
-                    'scene_id' => $game->current_scene_id,
-                    'source' => GameHistory::SOURCE_ACTOR,
-                ]);
-            }
-        }
+        // Инкрементируем задержку отложенных сообщений ТОЛЬКО при совершении хода
+        $this->incrementDelayedMessages();
 
         $nextScene = $this->determineNextScene($game, $choice->event);
 
@@ -195,29 +184,15 @@ class GameService
         ];
     }
 
-    private function applyEventEffects(Game $game, array $state, Event $event): array
-    {
-        foreach ($event->effects as $effect) {
-            $state = $this->applyEffect($game, $state, $effect);
-        }
-        return $state;
-    }
-    private function applyEffect(Game $game, array $state, $effect): array
-    {
-
-        return $this->effectManager->handle($game, $effect, $state);
-    }
-
     /**
      * Обработать триггеры акторов
      */
-    private function processActorTriggers(Game $game, array $currentState): array
+    private function processActorTriggers(Game $game, array &$currentState): array
     {
         $triggeredEvents = [];
         $processedEvents = [];
         $maxIterations = 5;
         $iteration = 0;
-
         $actors = $this->getActors();
 
         do {
@@ -226,7 +201,6 @@ class GameService
 
             foreach ($actors as $actor) {
                 $triggers = $actor->triggers;
-
                 if (is_string($triggers)) {
                     $triggers = json_decode($triggers, true);
                 }
@@ -255,23 +229,27 @@ class GameService
                     if ($this->checkTriggerCondition($currentState, $key, $value)) {
                         $event = Event::with('effects.effectType')->find($eventId);
                         if ($event) {
+                            // Применяем эффекты и обновляем состояние (по ссылке)
                             $currentState = $this->applyEventEffects($game, $currentState, $event);
-
                             $processedEvents[$eventKey] = true;
 
                             // ========== ЗАПИСЫВАЕМ РЕАКЦИЮ АКТОРА С scene_id ==========
                             GameHistory::create([
                                 'game_id' => $game->id,
                                 'event_id' => $event->id,
-                                'scene_id' => $game->current_scene_id,  // <-- ДОБАВЛЕНО
+                                'scene_id' => $game->current_scene_id,
                                 'source' => GameHistory::SOURCE_ACTOR,
                             ]);
 
                             $messages = [];
                             foreach ($event->effects as $effect) {
-//                                $data = json_decode($effect->effect_data, true);
                                 $data = $effect->effect_data;
-                                Log::alert("------proceco triger",$data);
+                                if (is_string($data)) {
+                                    $data = json_decode($data, true);
+                                }
+                                if (is_string($data)) {
+                                    $data = json_decode($data, true);
+                                }
                                 if (isset($data['message']) && !empty($data['message'])) {
                                     $messages[] = $data['message'];
                                 }
@@ -289,16 +267,44 @@ class GameService
                             ];
 
                             $foundTrigger = true;
-                            break 2;
+                            break 2; // Начинаем следующую итерацию do-while для проверки каскадных триггеров
                         }
                     }
                 }
             }
-
         } while ($foundTrigger && $iteration < $maxIterations);
 
         return $triggeredEvents;
     }
+
+    /**
+     * Инкрементировать задержку отложенных сообщений (вызывается только при ходе)
+     */
+    private function incrementDelayedMessages(): void
+    {
+        $messages = session()->get('delayed_game_messages', []);
+        $updated = [];
+        foreach ($messages as $msg) {
+            $msg['current_delay'] = ($msg['current_delay'] ?? 0) + 1;
+            $updated[] = $msg;
+        }
+        session()->put('delayed_game_messages', $updated);
+    }
+
+    private function applyEventEffects(Game $game, array $state, Event $event): array
+    {
+        foreach ($event->effects as $effect) {
+            $state = $this->applyEffect($game, $state, $effect);
+        }
+        return $state;
+    }
+    private function applyEffect(Game $game, array $state, $effect): array
+    {
+
+        return $this->effectManager->handle($game, $effect, $state);
+    }
+
+
     /**
      * Получить созревшие отложенные сообщения
      */
@@ -394,12 +400,7 @@ class GameService
         if ($sceneTransitionEffect) {
             $data = $sceneTransitionEffect->effect_data;
 
-            if (is_string($data)) {
-                $data = json_decode($data, true);
-            }
-            if (is_string($data)) {
-                $data = json_decode($data, true);
-            }
+
 
             $targetSceneId = $data['target_scene_id'] ?? null;
 

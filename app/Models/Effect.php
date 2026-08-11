@@ -1,11 +1,9 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-
 
 class Effect extends Model
 {
@@ -15,68 +13,52 @@ class Effect extends Model
         'effect_data',
     ];
 
-    protected $casts = [
-        'effect_data' => 'array',
-    ];
+    // УБИРАЕМ $casts, чтобы избежать конфликта с Accessor
+    // protected $casts = ['effect_data' => 'array'];
 
-    // Связь с таблицей events (принадлежит событию)
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
     }
 
-    // Связь с таблицей effect_types (принадлежит типу эффекта)
     public function effectType(): BelongsTo
     {
         return $this->belongsTo(EffectType::class);
     }
+
     protected function effectData(): Attribute
     {
         return Attribute::make(
             get: function ($value) {
-                // Если JSON - декодируем
-                if (is_string($value)) {
-                    $decoded = json_decode($value, true);
-                    // Если декодировалось и это строка с JSON внутри
-                    if (is_string($decoded) && str_starts_with($decoded, '{')) {
-                        $decoded = json_decode($decoded, true);
+                $data = $value;
+
+                // Первое декодирование
+                if (is_string($data)) {
+                    $decoded = json_decode($data, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $data = $decoded;
                     }
-                    $value = $decoded ?? $value;
                 }
 
-                // Нормализация: в части записей БД ключи/значения пришли с
-                // пробелами на конце ("message " вместо "message"), из-за чего
-                // хендлеры не находили данные и сообщения не создавались.
-                if (is_array($value)) {
+                // Второе декодирование (если было двойное экранирование в БД)
+                if (is_string($data)) {
+                    $decoded = json_decode($data, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $data = $decoded;
+                    }
+                }
+
+                // Нормализация: если это массив, убираем случайные пробелы в ключах
+                if (is_array($data)) {
                     $normalized = [];
-                    foreach ($value as $k => $v) {
-                        $key = is_string($k) ? trim($k) : $k;
-                        $normalized[$key] = is_string($v) ? trim($v) : $v;
+                    foreach ($data as $k => $v) {
+                        $normalized[trim($k)] = $v;
                     }
                     return $normalized;
                 }
 
-                return $value;
+                return $data;
             }
         );
     }
-//    protected function effectData(): Attribute
-//    {
-//        return Attribute::make(
-//            get: function ($value) {
-//                // Если JSON - декодируем
-//                if (is_string($value)) {
-//                    $decoded = json_decode($value, true);
-//
-//                    // Если декодировалось и это строка с JSON внутри
-//                    if (is_string($decoded) && str_starts_with($decoded, '{')) {
-//                        $decoded = json_decode($decoded, true);
-//                    }
-//
-//                    return $decoded ?? $value;
-//                }
-//                return $value;
-//            }
-//        );
-//    }
 }

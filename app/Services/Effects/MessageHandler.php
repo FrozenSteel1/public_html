@@ -11,15 +11,17 @@ class MessageHandler implements EffectHandlerInterface
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
         $data = $effect->effect_data;
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
+        if (is_string($data)) { $data = json_decode($data, true); }
+        if (is_string($data)) { $data = json_decode($data, true); }
 
         $message = $data['message'] ?? $data['text'] ?? null;
         $type = $data['type'] ?? 'info';
+
+        // 📥 ЛОГИРОВАНИЕ ПАРСИНГА
+        Log::info('📥 [MessageHandler] Старт обработки', [
+            'effect_id' => $effect->id,
+            'parsed_message' => $message,
+        ]);
 
         if ($message) {
             $messages = session()->get('game_messages', []);
@@ -27,21 +29,18 @@ class MessageHandler implements EffectHandlerInterface
                 'text' => $message,
                 'type' => $type,
                 'timestamp' => now()->toDateTimeString(),
-                // Опциональные метаданные письма (UI V1, экран 10).
-                // Если ключей нет в effect_data — вью использует безопасные фолбэки.
-                'actor' => $data['actor'] ?? null,
-                'sender' => $data['sender'] ?? null,
-                'subject' => $data['subject'] ?? null,
-                'priority' => $data['priority'] ?? null,
-                'urgent' => $data['urgent'] ?? null,
-                'time' => now()->format('d.m.Y H:i'),
             ];
             session()->put('game_messages', $messages);
 
-            Log::info('Message effect applied', [
-                'message' => $message,
-                'type' => $type,
-                'session_messages' => session()->get('game_messages'),
+            // ✅ ЛОГИРОВАНИЕ УСПЕШНОЙ ЗАПИСИ В СЕССИЮ
+            Log::info('✅ [MessageHandler] Успешно добавлено в сессию', [
+                'message_text' => $message,
+                'total_in_session' => count(session()->get('game_messages', [])),
+                'session_id' => session()->getId(),
+            ]);
+        } else {
+            Log::warning('❌ [MessageHandler] Пустое сообщение или не найдено в data', [
+                'data' => $data,
             ]);
         }
 

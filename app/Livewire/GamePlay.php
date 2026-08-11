@@ -31,6 +31,8 @@ class GamePlay extends Component
     public array $pendingResult = [];
     public bool $showMessageModal = false;
     public array $currentModalMessage = [];
+    /** Откуда открыта модалка сообщения: очередь хода или повторное открытие из «Входящих» */
+    public bool $messageModalFromInbox = false;
     public array $sceneActors = [];
     public array $gameHistoryWithMonths = [];
     public int $timerKey = 0;
@@ -510,17 +512,10 @@ class GamePlay extends Component
     public function selectChoice(int $choiceId): void
     {
         try {
-            Log::info('selectChoice начат', [
-                'game_id' => $this->game->id,
-                'choice_id' => $choiceId,
-                'current_scene_id' => $this->game->current_scene_id,
+            Log::info('🚀 [GamePlay] selectChoice START', [
+                'session_before_makeChoice' => session()->get('game_messages', []),
             ]);
 
-            // ========== ПРОВЕРКА СЕССИИ ДО ==========
-            Log::info('Сессия ДО makeChoice', [
-                'game_messages' => session()->get('game_messages', []),
-                'all_session' => session()->all(),
-            ]);
 
             $this->dispatch('console-log', [
                 'type' => 'info',
@@ -536,13 +531,7 @@ class GamePlay extends Component
                 'new_scene_title' => $result['next_scene']->title ?? null,
             ]);
 
-            // ========== ПРОВЕРКА СЕССИИ ПОСЛЕ ==========
-            Log::info('Сессия ПОСЛЕ makeChoice', [
-                'game_messages' => session()->get('game_messages', []),
-            ]);
-
             $this->game = $result['game'];
-
             $this->loadHistoryWithMonths();
             $this->loadSceneActors();
 
@@ -565,33 +554,43 @@ class GamePlay extends Component
             }, $result['triggered_events'] ?? []);
 
             // ========== ПОЛУЧАЕМ СООБЩЕНИЯ ==========
+            // 🔎 ГЛАВНАЯ ПРОВЕРКА МАССИВА
+            Log::info('🔎 [GamePlay] ФИНАЛЬНАЯ ПРОВЕРКА МАССИВА', [
+                'game_messages_variable' => $this->gameMessages,
+                'count' => count($this->gameMessages),
+                'is_empty' => empty($this->gameMessages),
+                'session_id' => session()->getId(),
+            ]);
             $this->gameMessages = $this->effectManager->getMessages();
             if (empty($this->gameMessages)) {
                 $this->gameMessages = session()->get('game_messages', []);
-                session()->forget('game_messages');
             }
 
-            // Входящие для экранов 11–12
+            // ========== СНИМОК РЕЗУЛЬТАТА (ЭКРАН 11) ==========
+            $this->resultSnapshot = [
+                'decision' => collect($this->availableChoices)->firstWhere('id', $choiceId)?->description ?? 'Решение принято',
+                'scene' => $result['next_scene']->title ?? '',
+                'events' => collect($this->triggeredEvents)->map(fn ($t) => [
+                    'actor' => $t['actor_name'] ?? 'Актор',
+                    'event' => $t['event_name'] ?? 'Событие',
+                ])->values()->toArray(),
+                'messages' => $this->gameMessages,
+            ];
             $this->inboxMessages = $this->normalizeMessages($this->gameMessages);
             $this->readInboxIds = [];
 
             // ========== ПРИМЕНЯЕМ РЕЗУЛЬТАТ СРАЗУ ==========
+            // Сцена переключается в любом случае; модалка показывается поверх новой сцены.
             $this->applyGameResult($result);
-            $this->decisionsDoc = 'result';
 
-            // Сброс состояния решений для новой сцены
-            $this->selectedChoiceId = null;
-            $this->decisionDeadline = null;
-            $this->decisionExpired = false;
-
-            // Если есть сообщения — показываем модальное окно поверх результата
+            // Если есть сообщения — показываем модалку поверх новой сцены (очередь, по одному)
             if (count($this->gameMessages) > 0) {
                 $this->currentModalMessage = $this->gameMessages[0];
                 $this->showMessageModal = true;
                 $this->messageShown = false;
+                $this->messageModalFromInbox = false;
             }
-            $this->applyGameResult($result);
-            $this->decisionsDoc = 'result';
+
         } catch (\Exception $e) {
             Log::error('selectChoice ошибка', [
                 'error' => $e->getMessage(),
@@ -599,6 +598,37 @@ class GamePlay extends Component
             ]);
             session()->flash('error', 'Ошибка: ' . $e->getMessage());
         }
+    }
+
+    public function closeMessageModal(): void
+    {
+        // Модалка открыта из «Входящих» (экран 12) — просто закрываем, остаёмся на списке
+        if ($this->messageModalFromInbox) {
+            $this->showMessageModal = false;
+            $this->currentModalMessage = [];
+
+            return;
+        }
+
+        // Очередь хода: если сообщения ещё есть — показываем следующее друг за другом
+        if (count($this->gameMessages) > 1) {
+            array_shift($this->gameMessages);
+            $this->currentModalMessage = $this->gameMessages[0];
+            $this->showMessageModal = true;
+
+            return;
+        }
+
+        // Очередь исчерпана: закрываем, чистим сессию (по спецификации),
+        // переводим игрока на экран 11 «Решение принято»
+        $this->showMessageModal = false;
+        $this->messageShown = true;
+        $this->currentModalMessage = [];
+        $this->gameMessages = [];
+        $this->effectManager->clearMessages();
+
+        $this->gameplayTab = 'decisions';
+        $this->decisionsDoc = 'result';
     }
 
     private function applyGameResult(array $result): void
@@ -644,12 +674,7 @@ class GamePlay extends Component
         $this->restartTimer();
     }
 
-    public function closeMessageModal(): void
-    {
-        $this->showMessageModal = false;
-        $this->messageShown = true;
-        $this->currentModalMessage = [];
-    }
+
 
 
 
@@ -687,17 +712,8 @@ class GamePlay extends Component
         if (!$this->scene) {
             return [];
         }
-
-        $data = json_decode($this->scene->additional_data, true);
-
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-
-        return is_array($data) ? $data : [];
+        // Просто возвращаем то, что отдал Accessor модели Scene
+        return $this->scene->additional_data;
     }
 
     public function forceNewGame(): void
@@ -1178,6 +1194,7 @@ class GamePlay extends Component
         }
         $this->currentModalMessage = $message;
         $this->showMessageModal = true;
+        $this->messageModalFromInbox = true;
         if (!in_array($messageId, $this->readInboxIds, true)) {
             $this->readInboxIds[] = $messageId;
         }

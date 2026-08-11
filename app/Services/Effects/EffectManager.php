@@ -29,7 +29,7 @@ class EffectManager
             new MessageHandler(), // Для type 9 (Отойти в сторону)
             new ParameterChangeHandler(), // Для type 10 (Сила реакции)
             new SceneTransitionHandler(), // Для type 11 (Смена сцены)
-            new MessageHandler(), // Для type 12 (Сообщение) - РАСКОММЕНТИРОВАТЬ
+            new MessageHandler(), // Для type 12 (Сообщение)
             new DelayedMessageHandler(), // Для type 13 (Отложенное сообщение)
         ];
 
@@ -40,9 +40,9 @@ class EffectManager
 
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
-        Log::debug('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',$effect->toArray());
-        $effectTypeName = $effect->effectType->name ?? 'Неизвестный тип';
+        Log::debug('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', $effect->toArray());
 
+        $effectTypeName = $effect->effectType->name ?? 'Неизвестный тип';
         $handler = $this->handlers[$effectTypeName] ?? null;
 
         if ($handler) {
@@ -64,14 +64,12 @@ class EffectManager
         Log::warning('No handler found for effect type', [
             'type' => $effectTypeName,
         ]);
-
         return $currentState;
     }
 
     public function getDelayedMessages(): array
     {
         $messages = session()->get('delayed_game_messages', []);
-
         Log::info('EffectManager::getDelayedMessages: ДО обработки', [
             'messages' => $messages,
         ]);
@@ -81,7 +79,6 @@ class EffectManager
 
         foreach ($messages as $msg) {
             $msg['current_delay'] = ($msg['current_delay'] ?? 0) + 1;
-
             Log::info('EffectManager::getDelayedMessages: обработка', [
                 'message' => $msg['message'],
                 'delay' => $msg['delay'],
@@ -106,12 +103,23 @@ class EffectManager
         return $ready;
     }
 
+    /**
+     * Получить сообщения БЕЗ очистки сессии
+     */
     public function getMessages(): array
     {
         $messages = session()->get('game_messages', []);
-        Log::info('EffectManager::getMessages', ['messages' => $messages]);
-        session()->put('game_messages', []);
+        Log::info('EffectManager::getMessages (без очистки)', ['messages' => $messages]);
         return $messages;
+    }
+
+    /**
+     * Очистить сессию сообщений (вызывать после отображения модального окна)
+     */
+    public function clearMessages(): void
+    {
+        session()->put('game_messages', []);
+        Log::info('EffectManager::clearMessages: сессия очищена');
     }
 
     public function getSupports(): array

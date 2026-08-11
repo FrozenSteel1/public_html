@@ -198,6 +198,9 @@
     </div>
 @else
     {{-- ========== ЭКРАНЫ 04+: ИГРОВОЕ ДОСЬЕ ========== --}}
+    {{-- Единый корень фазы gameplay: все модалки должны быть внутри него,
+         иначе Livewire-морфинг теряет узлы, вставляемые на уровне корня компонента --}}
+    <div class="gameplay-phase-root">
     <div class="app-workspace app-workspace--gameplay">
         <section class="app-workspace__main">
             <div class="dossier dossier--gameplay">
@@ -1052,45 +1055,33 @@
         </aside>
     </div>
 
-    {{-- ========== ЭКРАН 10: ВХОДЯЩЕЕ СООБЩЕНИЕ ========== --}}
+    {{-- ========== ЭКРАН 10: ВХОДЯЩЕЕ СООБЩЕНИЕ (С INLINE-СТИЛЯМИ) ========== --}}
     @if($showMessageModal && !empty($currentModalMessage))
         @php
-            $msgActor = $currentModalMessage['actor'] ?? $currentModalMessage['type'] ?? 'Актор';
-            $msgSender = $currentModalMessage['sender'] ?? $currentModalMessage['source'] ?? 'Служебный канал';
-            $msgSubject = $currentModalMessage['subject'] ?? 'Сообщение';
-            $msgPriority = $currentModalMessage['priority'] ?? 'Средний';
-            $msgTime = $currentModalMessage['time'] ?? $currentModalMessage['created_at'] ?? now()->format('d.m.Y H:i');
-            $msgBody = $currentModalMessage['text'] ?? $currentModalMessage['message'] ?? '';
+            $msgBody = $currentModalMessage['text'] ?? $currentModalMessage['message'] ?? 'Сообщение отсутствует';
         @endphp
-        <div class="incoming-message-backdrop" wire:click="closeMessageModal" x-on:keydown.escape.window="$wire.closeMessageModal()">
-            <article class="incoming-message" role="dialog" aria-modal="true" aria-labelledby="incoming-message-title" wire:click.stop>
-                <header class="incoming-message__header">
-                    <x-game.icon name="mail" class="incoming-message__header-icon" />
-                    <h2 id="incoming-message-title">Входящее сообщение</h2>
-                    <button type="button" class="incoming-message__close" wire:click="closeMessageModal" aria-label="Закрыть входящее сообщение">×</button>
-                </header>
-                <div class="incoming-message__divider"></div>
-                <div class="incoming-message__content">
-                    <dl class="incoming-message__metadata">
-                        <dt>Отправитель</dt><dd>{{ $msgActor }} актор</dd>
-                        <dt>Источник</dt><dd>{{ $msgSender }}</dd>
-                        <dt>Тема</dt><dd>{{ $msgSubject }}</dd>
-                        <dt>Приоритет</dt><dd>{{ $msgPriority }}</dd>
-                        <dt>Время</dt><dd>{{ $msgTime }}</dd>
-                    </dl>
-                    <section class="incoming-message__body">
-                        @foreach(explode("\n", $msgBody) as $paragraph)
-                            @if(trim($paragraph) !== '')
-                                <p>{{ trim($paragraph) }}</p>
-                            @endif
-                        @endforeach
-                    </section>
+
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 99999;"
+             wire:click="closeMessageModal"
+             x-on:keydown.escape.window="$wire.closeMessageModal()">
+
+            <div style="background: white; border-radius: 12px; max-width: 500px; width: 90%; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center;"
+                 wire:click.stop>
+
+                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 16px;">ℹ️ Сообщение</h2>
+
+                <div style="background: #f3f4f6; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                        {{ $msgBody }}
+                    </p>
                 </div>
-                <footer class="incoming-message__footer">
-                    <button type="button" class="document-action document-action--secondary" wire:click="closeMessageModal">Закрыть</button>
-                    <button type="button" class="document-action document-action--primary" wire:click="closeMessageModal">Продолжить</button>
-                </footer>
-            </article>
+
+                <button type="button"
+                        wire:click="closeMessageModal"
+                        style="background-color: #2563eb; color: white; padding: 12px 32px; border-radius: 8px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    Продолжить
+                </button>
+            </div>
         </div>
     @endif
 
@@ -1238,6 +1229,6 @@
                 });
             });
         </script>
-    @endpush
-</div>
+        @endpush
+    </div> {{-- /.gameplay-phase-root --}}
 @endif

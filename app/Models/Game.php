@@ -108,13 +108,6 @@ class Game extends Model
     {
         $data = $effect->effect_data;
 
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-
         $key = $data['key'] ?? null;
         $value = $data['value'] ?? null;
 

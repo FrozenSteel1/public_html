@@ -2544,6 +2544,21 @@ body.message-modal-open {
   stroke: var(--color-gold-strong);
   stroke-width: 1.6;
 }
+.incoming-message__priority-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--color-warning);
+    vertical-align: middle;
+}
+.incoming-message__priority-dot--high {
+    background: var(--color-danger);
+}
+.incoming-message__priority-dot--low {
+    background: var(--color-success);
+}
 
 .incoming-message__footer {
   display: flex;
