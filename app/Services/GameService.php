@@ -129,7 +129,8 @@ class GameService
         // Получаем текущее состояние
         $currentState = $game->getCurrentState();
 
-        // Применяем эффекты события выбора
+        // Применяем эффекты события выбора (контекст: ход игрока)
+        $this->effectManager->setContext(['source' => GameHistory::SOURCE_PLAYER]);
         $newState = $this->applyEventEffects($game, $currentState, $choice->event);
 
         // ========== ЗАПИСЫВАЕМ В ИСТОРИЮ - ИГРОВОЙ ХОД ==========
@@ -229,7 +230,8 @@ class GameService
                     if ($this->checkTriggerCondition($currentState, $key, $value)) {
                         $event = Event::with('effects.effectType')->find($eventId);
                         if ($event) {
-                            // Применяем эффекты и обновляем состояние (по ссылке)
+                            // Применяем эффекты и обновляем состояние (по ссылке); контекст: реакция актора
+                            $this->effectManager->setContext(['source' => GameHistory::SOURCE_ACTOR, 'actor_name' => $actor->name]);
                             $currentState = $this->applyEventEffects($game, $currentState, $event);
                             $processedEvents[$eventKey] = true;
 

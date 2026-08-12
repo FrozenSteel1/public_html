@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Log;
 
 class MessageHandler implements EffectHandlerInterface
 {
+    /** Контекст применения эффекта (кто породил событие) */
+    private array $context = [];
+
+    public function setContext(array $context): void
+    {
+        $this->context = $context;
+    }
     public function handle(Game $game, Effect $effect, array $currentState): array
     {
         $data = $effect->effect_data;
@@ -26,13 +33,17 @@ class MessageHandler implements EffectHandlerInterface
         $message = $data['message'] ?? $data['text'] ?? null;
         $type = $data['type'] ?? 'info';
 
-        // Отправитель/источник для модалки (экран 10) — из имени события эффекта
-        $eventName = $effect->event->name ?? '';
-        $actorName = $eventName !== '' ? trim(explode(' - ', $eventName)[0]) : '';
+        // Кто породил событие — из контекста применения эффектов (GameService):
+        // source=actor → имя актора, чей триггер сработал; иначе — ход игрока
+        $eventName = trim($effect->event->name ?? '');
+        $sender = ($this->context['source'] ?? null) === 'actor'
+            ? ($this->context['actor_name'] ?? 'Актор')
+            : 'Результат действий игрока';
 
         Log::info('📥 [MessageHandler] Старт обработки', [
             'effect_id' => $effect->id,
             'parsed_message' => $message,
+            'sender' => $sender,
         ]);
 
         if ($message) {
@@ -41,13 +52,15 @@ class MessageHandler implements EffectHandlerInterface
                 'text' => $message,
                 'type' => $type,
                 'timestamp' => now()->toDateTimeString(),
-                'actor' => $actorName !== '' ? $actorName : 'Актор',
-                'sender' => $eventName !== '' ? $eventName : 'Служебное сообщение',
+                'actor' => $sender,
+                'sender' => $sender,
+                'subject' => $eventName !== '' ? $eventName : 'Сообщение',
             ];
             session()->put('game_messages', $messages);
 
             Log::info('✅ [MessageHandler] Успешно добавлено в сессию', [
                 'message_text' => $message,
+                'sender' => $sender,
                 'total_in_session' => count(session()->get('game_messages', [])),
             ]);
         } else {

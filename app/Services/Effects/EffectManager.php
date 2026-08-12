@@ -9,6 +9,13 @@ use Illuminate\Support\Facades\Log;
 class EffectManager
 {
     private array $handlers = [];
+    /** Контекст применения эффектов: кто породил событие (игрок / актор) */
+    private array $context = [];
+
+    public function setContext(array $context): void
+    {
+        $this->context = $context;
+    }
 
     public function __construct()
     {
@@ -46,6 +53,9 @@ class EffectManager
         $handler = $this->handlers[$effectTypeName] ?? null;
 
         if ($handler) {
+            if (method_exists($handler, 'setContext')) {
+                $handler->setContext($this->context);
+            }
             try {
                 Log::info('Processing effect', [
                     'type' => $effectTypeName,
