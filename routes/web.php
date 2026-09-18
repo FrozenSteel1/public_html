@@ -15,6 +15,7 @@ use App\Livewire\ScenarioSelector;
 use App\Livewire\GameResults;
 use App\Livewire\PlayerDashboard;
 use App\Livewire\AdminDashboard;
+use App\Livewire\ChoiceTypesManager;
 
 Route::get('/', function () {
     return view('welcome');
@@ -38,6 +39,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/companies', CompaniesManager::class)->name('companies');
     Route::get('/scenarios', ScenariosManager::class)->name('scenarios');
     Route::get('/scenes', ScenesManager::class)->name('scenes');
+    Route::get('/choice-types', ChoiceTypesManager::class)->name('choice-types');
     Route::get('/events', EventsManager::class)->name('events');
     Route::get('/effect-types', EffectTypesManager::class)->name('effect-types');
     Route::get('/actors', ActOrsManager::class)->name('actors');

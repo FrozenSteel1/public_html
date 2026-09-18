@@ -8,7 +8,7 @@ use App\Models\Event;
 use App\Models\Actor;
 use Livewire\Component;
 use Livewire\WithPagination;
-
+use App\Models\ChoiceType;
 class ScenesManager extends Component
 {
     use WithPagination;
@@ -45,6 +45,7 @@ class ScenesManager extends Component
         'order' => 'required|integer|min:0',
         'choices.*.description' => 'required|string',
         'choices.*.event_id' => 'required|exists:events,id',
+        'choices.*.choice_type_id' => 'nullable|exists:choice_types,id',
     ];
 
     public function mount()
@@ -70,11 +71,12 @@ class ScenesManager extends Component
 
         $scenarios = Scenario::all();
         $events = Event::all();
-
+        $choiceTypes = ChoiceType::orderBy('id')->get();
         return view('livewire.scenes-manager', [
             'scenes' => $scenes,
             'scenarios' => $scenarios,
             'events' => $events,
+            'choiceTypes' => $choiceTypes,
         ]);
     }
 
@@ -100,6 +102,7 @@ class ScenesManager extends Component
                 'id' => $choice->id,
                 'description' => $choice->description,
                 'event_id' => $choice->event_id,
+                'choice_type_id' => $choice->choice_type_id,
                 'conditions' => $this->jsonToArray($choice->conditions),
                 'order' => $choice->order,
             ];
@@ -163,6 +166,7 @@ class ScenesManager extends Component
             'id' => null,
             'description' => '',
             'event_id' => '',
+            'choice_type_id' => null,
             'conditions' => [],
             'order' => count($this->choices),
         ];
@@ -216,6 +220,7 @@ class ScenesManager extends Component
                 $choiceData = [
                     'description' => $choice['description'],
                     'event_id' => $choice['event_id'],
+                    'choice_type_id' => !empty($choice['choice_type_id']) ? (int) $choice['choice_type_id'] : null,
                     'conditions' => $this->arrayToJson($choice['conditions'] ?? []),
                     'order' => $choice['order'] ?? 0,
                 ];
@@ -254,6 +259,7 @@ class ScenesManager extends Component
                     $scene->choices()->create([
                         'description' => $choice['description'],
                         'event_id' => $choice['event_id'],
+                        'choice_type_id' => !empty($choice['choice_type_id']) ? (int) $choice['choice_type_id'] : null,
                         'conditions' => $this->arrayToJson($choice['conditions'] ?? []),
                         'order' => $choice['order'] ?? 0,
                     ]);

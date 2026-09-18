@@ -34,9 +34,14 @@
             <div class="text-3xl mb-2">💾</div>
             <div class="text-sm font-medium text-gray-700">Предустановки</div>
         </a>
+        <a href="{{ route('admin.choice-types') }}" class="bg-white rounded-lg shadow p-6 text-center hover:shadow-lg transition">
+            <div class="text-3xl mb-2">🧩</div>
+            <div class="text-sm font-medium text-gray-700">Типы выборов</div>
+        </a>
         <a href="{{ route('admin.games') }}" class="bg-white rounded-lg shadow p-6 text-center hover:shadow-lg transition">
             <div class="text-3xl mb-2">🎮</div>
             <div class="text-sm font-medium text-gray-700">Игры</div>
         </a>
+
     </div>
 </div>

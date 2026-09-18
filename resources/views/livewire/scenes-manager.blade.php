@@ -90,8 +90,7 @@
 
                                 @if(is_array($additional_data) && count($additional_data) > 0)
                                     @foreach($additional_data as $index => $data)
-                                        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                                            <!-- Поле ключа с автоподстановкой -->
+                                        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start;">                                            <!-- Поле ключа с автоподстановкой -->
                                             <div style="flex: 1; position: relative;">
                                                 <input wire:model.live="additional_data.{{ $index }}.key"
                                                        type="text"
@@ -117,10 +116,10 @@
                                                         @endforeach
                                                     </select>
                                                 @else
-                                                    <input wire:model="additional_data.{{ $index }}.value"
-                                                           type="text"
-                                                           style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;"
-                                                           placeholder="Значение">
+                                                    <textarea wire:model="additional_data.{{ $index }}.value"
+                                                              rows="3"
+                                                              style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; resize: vertical; min-height: 62px;"
+                                                              placeholder="Значение"></textarea>
                                                 @endif
                                             </div>
 
@@ -171,15 +170,16 @@
 
                                             <div style="margin-bottom: 8px;">
                                                 <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px;">Описание *</label>
-                                                <input wire:model="choices.{{ $index }}.description" type="text"
-                                                       style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;"
-                                                       placeholder="Описание выбора">
+                                                <textarea wire:model="choices.{{ $index }}.description"
+                                                          rows="3"
+                                                          style="width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; resize: vertical; min-height: 62px;"
+                                                          placeholder="Описание выбора"></textarea>
                                                 @error('choices.'.$index.'.description')
                                                 <span style="color: red; font-size: 11px;">{{ $message }}</span>
                                                 @enderror
                                             </div>
 
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                                                 <div>
                                                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px;">Событие *</label>
                                                     <select wire:model="choices.{{ $index }}.event_id"
@@ -190,6 +190,20 @@
                                                         @endforeach
                                                     </select>
                                                     @error('choices.'.$index.'.event_id')
+                                                    <span style="color: red; font-size: 11px;">{{ $message }}</span>
+                                                    @enderror
+                                                </div>
+
+                                                <div>
+                                                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px;">Тип ответа</label>
+                                                    <select wire:model="choices.{{ $index }}.choice_type_id"
+                                                            style="width: 100%; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;">
+                                                        <option value="">— не указан —</option>
+                                                        @foreach($choiceTypes as $type)
+                                                            <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    @error('choices.'.$index.'.choice_type_id')
                                                     <span style="color: red; font-size: 11px;">{{ $message }}</span>
                                                     @enderror
                                                 </div>

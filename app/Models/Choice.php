@@ -11,6 +11,7 @@ class Choice extends Model
         'scene_id',
         'description',
         'event_id',
+        'choice_type_id',
         'conditions',
         'order',
     ];
@@ -29,5 +30,11 @@ class Choice extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    // Связь с таблицей choice_types (тип ответа игрока)
+    public function choiceType(): BelongsTo
+    {
+        return $this->belongsTo(ChoiceType::class);
     }
 }
